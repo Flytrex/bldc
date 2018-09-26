@@ -420,8 +420,9 @@ void terminal_process_string(char *str) {
 		} else {
 			commands_printf("This command requires two arguments.\n");
 		}
+	} else if (strcmp(argv[0], "limits") == 0) {
+        mc_interface_print_limits();
 	}
-
 	// The help command
 	else if (strcmp(argv[0], "help") == 0) {
 		commands_printf("Valid commands are:");
@@ -503,6 +504,9 @@ void terminal_process_string(char *str) {
 
 		commands_printf("foc_openloop [current] [erpm]");
 		commands_printf("  Create an open loop rotating current vector.");
+
+		commands_printf("limits");
+		commands_printf("  Print motor current limits.");
 
 		for (int i = 0;i < callback_write;i++) {
 			if (callbacks[i].arg_names) {

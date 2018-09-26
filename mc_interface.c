@@ -1325,6 +1325,14 @@ void mc_interface_adc_inj_int_handler(void) {
 	}
 }
 
+
+void mc_interface_print_limits(void) {
+    const volatile mc_configuration* conf = mc_interface_get_configuration();
+
+    commands_printf("I max:        %.3f", (double) conf->lo_current_max);
+    commands_printf("I min:        %.3f", (double) conf->lo_current_min);
+}
+
 /**
  * Update the override limits for a configuration based on MOSFET temperature etc.
  *
