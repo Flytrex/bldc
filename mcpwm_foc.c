@@ -1677,8 +1677,10 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 		// observer has lost tracking. Use duty cycle control with the lowest duty cycle
 		// to get as smooth braking as possible.
 		if (m_control_mode == CONTROL_MODE_CURRENT_BRAKE
-				//				&& (m_conf->foc_sensor_mode != FOC_SENSOR_MODE_ENCODER) // Don't use this with encoders
-				&& fabsf(duty_filtered) < 0.03) {
+				//&& (m_conf->foc_sensor_mode != FOC_SENSOR_MODE_ENCODER) // Don't use this with encoders
+				//&& fabsf(duty_filtered) < 0.025
+                && fabsf(mcpwm_foc_get_rpm()) < 100
+            ) {
 			control_duty = true;
 			duty_set = 0.0;
 		}
