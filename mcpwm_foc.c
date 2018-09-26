@@ -1436,11 +1436,11 @@ bool mcpwm_foc_hall_detect(float current, uint8_t *hall_table) {
 }
 
 void mcpwm_foc_print_state(void) {
-	commands_printf("Mod d:        %.2f", (double)m_motor_state.mod_d);
-	commands_printf("Mod q:        %.2f", (double)m_motor_state.mod_q);
-	commands_printf("Duty:         %.2f", (double)m_motor_state.duty_now);
-	commands_printf("Vd:           %.2f", (double)m_motor_state.vd);
-	commands_printf("Vq:           %.2f", (double)m_motor_state.vq);
+	commands_printf("Mod d:        %.3f", (double)m_motor_state.mod_d);
+	commands_printf("Mod q:        %.3f", (double)m_motor_state.mod_q);
+	commands_printf("Duty:         %.3f", (double)m_motor_state.duty_now);
+	commands_printf("Vd:           %.3f", (double)m_motor_state.vd);
+	commands_printf("Vq:           %.3f", (double)m_motor_state.vq);
 	commands_printf("Phase:        %.2f", (double)m_motor_state.phase);
 	commands_printf("V_alpha:      %.2f", (double)m_motor_state.v_alpha);
 	commands_printf("V_beta:       %.2f", (double)m_motor_state.v_beta);
@@ -1454,6 +1454,12 @@ void mcpwm_foc_print_state(void) {
 	commands_printf("i_abs_filter: %.2f", (double)m_motor_state.i_abs_filter);
 	commands_printf("Obs_x1:       %.2f", (double)m_observer_x1);
 	commands_printf("Obs_x2:       %.2f", (double)m_observer_x2);
+	commands_printf("vd_int:       %.2f", (double)m_motor_state.vd_int);
+	commands_printf("vq_int:       %.2f", (double)m_motor_state.vq_int);
+	commands_printf("max_duty:     %.3f", (double)m_motor_state.max_duty);
+	commands_printf("mode:          %d", (int)m_control_mode);
+	commands_printf("iq_set:       %.3f", (double)m_iq_set);
+
 }
 
 float mcpwm_foc_get_last_inj_adc_isr_duration(void) {
