@@ -859,6 +859,12 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		commands_send_packet(send_buffer, ind);
 		break;
 
+	case COMM_SET_CURRENT_LIMIT2:
+		ind = 0;
+		mc_interface_set_current_limit2((float)buffer_get_int32(data, &ind) / 1000.0);
+		timeout_reset();
+		break;
+
 	default:
 		break;
 	}
