@@ -1326,11 +1326,19 @@ void mc_interface_adc_inj_int_handler(void) {
 }
 
 
+// set additional (app-controlled) current limit
+void mc_interface_set_current_limit2(float currentLimit) {
+    m_conf.l_current_max2 = currentLimit;
+}
+
+
 void mc_interface_print_limits(void) {
     const volatile mc_configuration* conf = mc_interface_get_configuration();
 
     commands_printf("I max:        %.3f", (double) conf->lo_current_max);
     commands_printf("I min:        %.3f", (double) conf->lo_current_min);
+    commands_printf("I max2:       %.3f", (double) conf->l_current_max2);
+	commands_printf(" ");
 }
 
 /**
@@ -1456,6 +1464,8 @@ static void update_override_limits(volatile mc_configuration *conf) {
 	lo_max = utils_min_abs(lo_max, lo_min_rpm);
 	lo_max = utils_min_abs(lo_max, lo_fet_temp_accel);
 	lo_max = utils_min_abs(lo_max, lo_motor_temp_accel);
+
+	lo_max = utils_min_abs(lo_max, conf->l_current_max2);
 
 	if (lo_max < conf->cc_min_current) {
 		lo_max = conf->cc_min_current;

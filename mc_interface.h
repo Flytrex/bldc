@@ -74,6 +74,7 @@ void mc_interface_sample_print_data(debug_sampling_mode mode, uint16_t len, uint
 float mc_interface_temp_fet_filtered(void);
 float mc_interface_temp_motor_filtered(void);
 void mc_interface_print_limits(void);
+void mc_interface_set_current_limit2(float currentLimit);
 
 // MC implementation functions
 void mc_interface_fault_stop(mc_fault_code fault);

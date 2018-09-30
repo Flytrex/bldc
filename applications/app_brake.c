@@ -144,11 +144,16 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
             is_active = false;
         } else if (argc==3 && strcmp(argv[1], "rpm") == 0) {
             sscanf(argv[2], "%f", &target_rpm);
+        } else if (argc==3 && strcmp(argv[1], "lim") == 0) {
+        	float limit = 0.0;
+            sscanf(argv[2], "%f", &limit);
+            mc_interface_set_current_limit2(limit);
         }
+
     }
 
    	commands_printf("Brake Status");
-	commands_printf("   Running: %s", is_running ? "On" : "Off");
+	commands_printf("   App running: %s", is_running ? "On" : "Off");
 	commands_printf("   Active: %s", is_active ? "On" : "Off");
 	commands_printf("   RPM: %.1f", (double)target_rpm);
 	commands_printf("   argc: %d", argc);

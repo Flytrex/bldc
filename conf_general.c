@@ -195,6 +195,7 @@ void conf_general_get_default_mc_configuration(mc_configuration *conf) {
 	conf->l_watt_max = MCCONF_L_WATT_MAX;
 	conf->l_watt_min = MCCONF_L_WATT_MIN;
 
+	conf->l_current_max2 = conf->l_current_max;
 	conf->lo_current_max = conf->l_current_max;
 	conf->lo_current_min = conf->l_current_min;
 	conf->lo_in_current_max = conf->l_in_current_max;

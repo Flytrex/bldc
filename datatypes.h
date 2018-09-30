@@ -253,6 +253,8 @@ typedef struct {
 	float m_dc_f_sw;
 	float m_ntc_motor_beta;
 	out_aux_mode m_out_aux_mode;
+
+	float l_current_max2;
 } mc_configuration;
 
 // Applications to use
