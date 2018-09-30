@@ -1044,6 +1044,7 @@ int conf_general_detect_apply_all_foc(float max_power_loss,
 	mcconf.foc_current_kp = 0.0005;
 	mcconf.foc_current_ki = 1.0;
 	mcconf.l_current_max = MCCONF_L_CURRENT_MAX;
+	mcconf.l_current_max2 = MCCONF_L_CURRENT_MAX;
 	mcconf.l_current_min = MCCONF_L_CURRENT_MIN;
 	mcconf.l_current_max_scale = MCCONF_L_CURRENT_MAX_SCALE;
 	mcconf.l_current_min_scale = MCCONF_L_CURRENT_MIN_SCALE;

@@ -170,7 +170,7 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
         } else if (argc==3 && strcmp(argv[1], "lim") == 0) {
         	float limit = 0.0;
             sscanf(argv[2], "%f", &limit);
-            //mc_interface_set_current_limit2(limit); //temporary disabled, restore after porting
+            mc_interface_set_current_limit2(limit);
 		} else if (argc==3 && strcmp(argv[1], "kp") == 0) {
 			sscanf(argv[2], "%f", &Kp);
 		} else if (argc==3 && strcmp(argv[1], "ki") == 0) {

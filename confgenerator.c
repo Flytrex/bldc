@@ -448,6 +448,7 @@ void confgenerator_set_defaults_mcconf(mc_configuration *conf) {
 	conf->motor_type = MCCONF_DEFAULT_MOTOR_TYPE;
 	conf->sensor_mode = MCCONF_SENSOR_MODE;
 	conf->l_current_max = MCCONF_L_CURRENT_MAX;
+	conf->l_current_max2 = MCCONF_L_CURRENT_MAX;
 	conf->l_current_min = MCCONF_L_CURRENT_MIN;
 	conf->l_in_current_max = MCCONF_L_IN_CURRENT_MAX;
 	conf->l_in_current_min = MCCONF_L_IN_CURRENT_MIN;

@@ -1564,6 +1564,13 @@ void mc_interface_adc_inj_int_handler(void) {
 	}
 }
 
+
+// set additional (app-controlled) current limit
+void mc_interface_set_current_limit2(float currentLimit) {
+    m_conf.l_current_max2 = currentLimit;
+}
+
+
 /**
  * Update the override limits for a configuration based on MOSFET temperature etc.
  *
@@ -1693,6 +1700,8 @@ static void update_override_limits(volatile mc_configuration *conf) {
 	lo_max = utils_min_abs(lo_max, lo_min_rpm);
 	lo_max = utils_min_abs(lo_max, lo_fet_temp_accel);
 	lo_max = utils_min_abs(lo_max, lo_motor_temp_accel);
+
+	lo_max = utils_min_abs(lo_max, conf->l_current_max2);
 
 	if (lo_max < conf->cc_min_current) {
 		lo_max = conf->cc_min_current;

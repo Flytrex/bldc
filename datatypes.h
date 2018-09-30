@@ -181,6 +181,7 @@ typedef struct {
 	mc_sensor_mode sensor_mode;
 	// Limits
 	float l_current_max;
+	float l_current_max2;
 	float l_current_min;
 	float l_in_current_max;
 	float l_in_current_min;
