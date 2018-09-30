@@ -21,6 +21,7 @@
 
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 #include "mc_interface.h"
 #include "timeout.h"
 
@@ -48,7 +49,7 @@
 static volatile bool stop_now = true;
 static volatile bool is_running = false;
 static volatile bool is_active = false;
-
+static volatile float target_rpm = GEN_ERPM;
 // Threads
 static THD_FUNCTION(gen_thread, arg);
 static THD_WORKING_AREA(gen_thread_wa, 1024);
@@ -93,7 +94,7 @@ static THD_FUNCTION(gen_thread, arg) {
             const float rpm_now = mc_interface_get_rpm();
 
             // Get speed normalized to set rpm
-            const float rpm_rel = fabsf(rpm_now)/GEN_ERPM;
+            const float rpm_rel = fabsf(rpm_now)/target_rpm;
 
             // Start generation at GEN_START * set rpm
             float current = rpm_rel - GEN_START;
@@ -141,12 +142,15 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
             is_active = true;
         } else if (strcmp(argv[1], "off") == 0) {
             is_active = false;
-       }
+        } else if (argc==3 && strcmp(argv[1], "rpm") == 0) {
+            sscanf(argv[2], "%f", &target_rpm);
+        }
     }
 
    	commands_printf("Brake Status");
 	commands_printf("   Running: %s", is_running ? "On" : "Off");
 	commands_printf("   Active: %s", is_active ? "On" : "Off");
+	commands_printf("   RPM: %.1f", (double)target_rpm);
 	commands_printf("   argc: %d", argc);
 	commands_printf(" ");
 }
