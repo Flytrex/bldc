@@ -20,6 +20,7 @@
 */
 
 #include <math.h>
+#include <string.h>
 #include "mc_interface.h"
 #include "timeout.h"
 
@@ -46,6 +47,7 @@
 
 static volatile bool stop_now = true;
 static volatile bool is_running = false;
+static volatile bool is_active = false;
 
 // Threads
 static THD_FUNCTION(gen_thread, arg);
@@ -72,11 +74,13 @@ void app_custom_configure(app_configuration *conf) {
 	(void) conf;
 
 	terminal_register_command_callback(
-			"brake_status",
+			"brake",
 			"Print the status of the brake app",
 			0,
 			terminal_cmd_brake_status);
 }
+
+
 
 static THD_FUNCTION(gen_thread, arg) {
 	(void)arg;
@@ -84,27 +88,29 @@ static THD_FUNCTION(gen_thread, arg) {
 	is_running = true;
 
 	for(;;) {
-		const float rpm_now = mc_interface_get_rpm();
 
-		// Get speed normalized to set rpm
-		const float rpm_rel = fabsf(rpm_now)/GEN_ERPM;
+        if(is_active) {
+            const float rpm_now = mc_interface_get_rpm();
 
-		// Start generation at GEN_START * set rpm
-		float current = rpm_rel - GEN_START;
-		if (current < 0.0)
-			current = 0.0;
+            // Get speed normalized to set rpm
+            const float rpm_rel = fabsf(rpm_now)/GEN_ERPM;
 
-		// Reach 100 % of set current at set rpm
-		current /= 1.00 - GEN_START;
+            // Start generation at GEN_START * set rpm
+            float current = rpm_rel - GEN_START;
+            if (current < 0.0)
+               current = 0.0;
 
-		current *= GEN_CURRENT;
+            // Reach 100 % of set current at set rpm
+            current /= 1.00 - GEN_START;
 
-		if (rpm_now < 0.0) {
-			mc_interface_set_current(current);
-		} else {
-			mc_interface_set_current(-current);
-		}
+            current *= GEN_CURRENT;
 
+            if (rpm_now < 0.0) {
+               mc_interface_set_current(current);
+            } else {
+               mc_interface_set_current(-current);
+            }
+        }
 
 		// Sleep for a time according to the specified rate
 		systime_t sleep_time = CH_CFG_ST_FREQUENCY / GEN_UPDATE_RATE_HZ;
@@ -130,7 +136,17 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	(void)argc;
 	(void)argv;
 
-	commands_printf("Brake Status");
+    if (argc > 1) {     // parse command argument
+        if (strcmp(argv[1], "on") == 0) {
+            is_active = true;
+        } else if (strcmp(argv[1], "off") == 0) {
+            is_active = false;
+       }
+    }
+
+   	commands_printf("Brake Status");
 	commands_printf("   Running: %s", is_running ? "On" : "Off");
+	commands_printf("   Active: %s", is_active ? "On" : "Off");
+	commands_printf("   argc: %d", argc);
 	commands_printf(" ");
 }
