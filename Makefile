@@ -251,7 +251,7 @@ ULIBDIR =
 ULIBS = -lm
 
 # pull a revision number from GIT
-GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
+GIT_VERSION := $(shell git describe --abbrev=7 --dirty --always --tags)
 
 #
 # End of user defines
