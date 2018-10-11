@@ -136,8 +136,6 @@ static THD_FUNCTION(gen_thread, arg) {
 
 
 static void terminal_cmd_brake_status(int argc, const char **argv) {
-	(void)argc;
-	(void)argv;
 
     if (argc > 1) {     // parse command argument
         if (strcmp(argv[1], "on") == 0) {
@@ -161,6 +159,7 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
     }
 
    	commands_printf("Brake Status");
+	commands_printf("   FW version: %s", GIT_VERSION);
 	commands_printf("   App running: %s", is_running ? "On" : "Off");
 	commands_printf("   Active: %s", is_active ? "On" : "Off");
 	commands_printf("   RPM: %.1f", (double)target_rpm);

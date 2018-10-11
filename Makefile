@@ -250,6 +250,9 @@ ULIBDIR =
 # List all user libraries here
 ULIBS = -lm
 
+# pull a revision number from GIT
+GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
+
 #
 # End of user defines
 ##############################################################################
@@ -285,3 +288,5 @@ debug-start:
 
 RULESPATH = $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC
 include $(RULESPATH)/rules.mk
+
+CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
