@@ -1,6 +1,6 @@
 /*
 	Copyright 2017 Arvid Brodin	arvidb@kth.se
-	Copyright 2018 Vadim	vadim@flytrex.com
+	Copyright 2018 Vadim	vadim@flytrex
 
 	This file is meant to be compiled as part of Benjamin Vedder's
 	VESC firmware.
@@ -34,7 +34,7 @@
 #define GEN_ERPM		2000.0
 
 // Generator current (amperes) at target rpm (always positive)
-#define GEN_CURRENT		  8.0
+#define GEN_CURRENT		  15.0
 
 // At what ratio of GEN_RPM to start generation.
 // GEN_RPM = 2000 and GEN_START = 0.90 would start regenerative braking at
@@ -42,7 +42,7 @@
 // GEN_CURRENT is reached at GEN_RPM.
 // (VESC_Tool limits, i.e. max motor currents & max battery current, will be
 // respected.)
-#define GEN_START		   0.60
+#define GEN_START		   0.70
 
 #define GEN_UPDATE_RATE_HZ	1000
 
@@ -50,6 +50,8 @@ static volatile bool stop_now = true;
 static volatile bool is_running = false;
 static volatile bool is_active = false;
 static volatile float target_rpm = GEN_ERPM;
+static volatile float target_current = GEN_CURRENT;
+
 // Threads
 static THD_FUNCTION(gen_thread, arg);
 static THD_WORKING_AREA(gen_thread_wa, 1024);
@@ -104,7 +106,7 @@ static THD_FUNCTION(gen_thread, arg) {
             // Reach 100 % of set current at set rpm
             current /= 1.00 - GEN_START;
 
-            current *= GEN_CURRENT;
+            current *= target_current;
 
             if (rpm_now < 0.0) {
                mc_interface_set_current(current);
@@ -140,10 +142,16 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
     if (argc > 1) {     // parse command argument
         if (strcmp(argv[1], "on") == 0) {
             is_active = true;
+
         } else if (strcmp(argv[1], "off") == 0) {
             is_active = false;
+
         } else if (argc==3 && strcmp(argv[1], "rpm") == 0) {
             sscanf(argv[2], "%f", &target_rpm);
+
+        } else if (argc==3 && strcmp(argv[1], "cur") == 0) {
+            sscanf(argv[2], "%f", &target_current);
+
         } else if (argc==3 && strcmp(argv[1], "lim") == 0) {
         	float limit = 0.0;
             sscanf(argv[2], "%f", &limit);
@@ -156,6 +164,6 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	commands_printf("   App running: %s", is_running ? "On" : "Off");
 	commands_printf("   Active: %s", is_active ? "On" : "Off");
 	commands_printf("   RPM: %.1f", (double)target_rpm);
-	commands_printf("   argc: %d", argc);
+	commands_printf("   Current: %.1f", (double)target_current);
 	commands_printf(" ");
 }
