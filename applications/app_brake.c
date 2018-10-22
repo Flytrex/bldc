@@ -42,15 +42,24 @@
 // GEN_CURRENT is reached at GEN_RPM.
 // (VESC_Tool limits, i.e. max motor currents & max battery current, will be
 // respected.)
-#define GEN_START		   0.70
+#define GEN_START		   0.00
 
 #define GEN_UPDATE_RATE_HZ	1000
+
+#define MAX_CURRENT 20.0
+
+#define RPM_THRESHOLD 50
 
 static volatile bool stop_now = true;
 static volatile bool is_running = false;
 static volatile bool is_active = false;
 static volatile float target_rpm = GEN_ERPM;
 static volatile float target_current = GEN_CURRENT;
+static volatile int direction = 1;
+static volatile float init_cur = 20;
+static volatile float min_current = 2;
+static volatile float delta_coef = 0.01;
+
 
 // Threads
 static THD_FUNCTION(gen_thread, arg);
@@ -84,36 +93,26 @@ void app_custom_configure(app_configuration *conf) {
 }
 
 
-
 static THD_FUNCTION(gen_thread, arg) {
 	(void)arg;
 
+	float current = MAX_CURRENT;
 	is_running = true;
-
 	for(;;) {
+		if (is_active) {
+			const float rpm_now = fabsf(mc_interface_get_rpm());
+			
+			if (rpm_now < RPM_THRESHOLD)
+				current = init_cur;
+			else
+				current += delta_coef * (rpm_now - target_rpm) * MAX_CURRENT / target_rpm;
 
-        if(is_active) {
-            const float rpm_now = mc_interface_get_rpm();
-
-            // Get speed normalized to set rpm
-            const float rpm_rel = fabsf(rpm_now)/target_rpm;
-
-            // Start generation at GEN_START * set rpm
-            float current = rpm_rel - GEN_START;
-            if (current < 0.0)
-               current = 0.0;
-
-            // Reach 100 % of set current at set rpm
-            current /= 1.00 - GEN_START;
-
-            current *= target_current;
-
-            if (rpm_now < 0.0) {
-               mc_interface_set_current(current);
-            } else {
-               mc_interface_set_current(-current);
-            }
-        }
+			if (current > MAX_CURRENT)
+				current = MAX_CURRENT;
+			else if (current < min_current)
+				current = min_current;
+			mc_interface_set_brake_current(current);
+		}
 
 		// Sleep for a time according to the specified rate
 		systime_t sleep_time = CH_CFG_ST_FREQUENCY / GEN_UPDATE_RATE_HZ;
@@ -154,7 +153,15 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
         	float limit = 0.0;
             sscanf(argv[2], "%f", &limit);
             mc_interface_set_current_limit2(limit);
-        }
+        } else if (argc==3 && strcmp(argv[1], "dir") == 0) {
+            sscanf(argv[2], "%d", &direction); 
+		} else if (argc==3 && strcmp(argv[1], "mincur") == 0) {
+			sscanf(argv[2], "%f", &min_current);
+		} else if (argc==3 && strcmp(argv[1], "delta") == 0) {
+			sscanf(argv[2], "%f", &delta_coef);
+		} else if (argc==3 && strcmp(argv[1], "initcur") == 0) {
+			sscanf(argv[2], "%f", &init_cur);
+		}
 
     }
 
@@ -162,7 +169,10 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	commands_printf("   FW version: %s", GIT_VERSION);
 	commands_printf("   App running: %s", is_running ? "On" : "Off");
 	commands_printf("   Active: %s", is_active ? "On" : "Off");
-	commands_printf("   RPM: %.1f", (double)target_rpm);
-	commands_printf("   Current: %.1f", (double)target_current);
+	commands_printf("   Target RPM: %.1f", (double)target_rpm);
+	commands_printf("   Initial Current: %.1f", (double)init_cur);
+	commands_printf("   Min Current: %.1f", (double)min_current);
+	commands_printf("   Delta Coefficient: %.5f", (double)delta_coef);
+	commands_printf("   Direction: %d", direction);
 	commands_printf(" ");
 }
