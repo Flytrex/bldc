@@ -29,22 +29,11 @@
 #include "terminal.h"
 #include "commands.h"
 
+#include "pid.h"
 
-// Target generator rpm (applies in both directions, always positive)
-#define GEN_ERPM		2000.0
-
-// Generator current (amperes) at target rpm (always positive)
-#define GEN_CURRENT		  15.0
-
-// At what ratio of GEN_RPM to start generation.
-// GEN_RPM = 2000 and GEN_START = 0.90 would start regenerative braking at
-// 0.90 * 2000 = 1800 rpm, and will linearly increase current so that
-// GEN_CURRENT is reached at GEN_RPM.
-// (VESC_Tool limits, i.e. max motor currents & max battery current, will be
-// respected.)
-#define GEN_START		   0.00
 
 #define GEN_UPDATE_RATE_HZ	1000
+#define SLEEP_TIME (CH_CFG_ST_FREQUENCY / GEN_UPDATE_RATE_HZ)
 
 #define MAX_CURRENT 20.0
 
@@ -53,12 +42,12 @@
 static volatile bool stop_now = true;
 static volatile bool is_running = false;
 static volatile bool is_active = false;
-static volatile float target_rpm = GEN_ERPM;
-static volatile float target_current = GEN_CURRENT;
-static volatile int direction = 1;
+static volatile float target_rpm = 4000;
 static volatile float init_cur = 20;
-static volatile float min_current = 2;
-static volatile float delta_coef = 0.01;
+static volatile float min_current = 0;
+static volatile double Kp = -0.01;
+static volatile double Kd = -5;
+static volatile double Ki = -0.00001;
 
 
 // Threads
@@ -93,29 +82,29 @@ void app_custom_configure(app_configuration *conf) {
 }
 
 
+
+
 static THD_FUNCTION(gen_thread, arg) {
 	(void)arg;
 
-	float current = MAX_CURRENT;
 	is_running = true;
+	PID pid;
 	for(;;) {
 		if (is_active) {
 			const float rpm_now = fabsf(mc_interface_get_rpm());
-			
-			if (rpm_now < RPM_THRESHOLD)
+			float current;
+			if (rpm_now < RPM_THRESHOLD){
 				current = init_cur;
+				pid = pid_init(SLEEP_TIME, MAX_CURRENT, min_current, Kp, Kd, Ki);
+			}
 			else
-				current += delta_coef * (rpm_now - target_rpm) * MAX_CURRENT / target_rpm;
+				current = pid_calc(&pid, target_rpm, rpm_now);
 
-			if (current > MAX_CURRENT)
-				current = MAX_CURRENT;
-			else if (current < min_current)
-				current = min_current;
 			mc_interface_set_brake_current(current);
 		}
 
 		// Sleep for a time according to the specified rate
-		systime_t sleep_time = CH_CFG_ST_FREQUENCY / GEN_UPDATE_RATE_HZ;
+		systime_t sleep_time = SLEEP_TIME;
 
 		// At least one tick should be slept to not block the other threads
 		if (sleep_time == 0) {
@@ -139,28 +128,24 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
     if (argc > 1) {     // parse command argument
         if (strcmp(argv[1], "on") == 0) {
             is_active = true;
-
         } else if (strcmp(argv[1], "off") == 0) {
             is_active = false;
-
         } else if (argc==3 && strcmp(argv[1], "rpm") == 0) {
             sscanf(argv[2], "%f", &target_rpm);
-
-        } else if (argc==3 && strcmp(argv[1], "cur") == 0) {
-            sscanf(argv[2], "%f", &target_current);
-
         } else if (argc==3 && strcmp(argv[1], "lim") == 0) {
         	float limit = 0.0;
             sscanf(argv[2], "%f", &limit);
             mc_interface_set_current_limit2(limit);
-        } else if (argc==3 && strcmp(argv[1], "dir") == 0) {
-            sscanf(argv[2], "%d", &direction); 
-		} else if (argc==3 && strcmp(argv[1], "mincur") == 0) {
+        } else if (argc==3 && strcmp(argv[1], "mincur") == 0) {
 			sscanf(argv[2], "%f", &min_current);
-		} else if (argc==3 && strcmp(argv[1], "delta") == 0) {
-			sscanf(argv[2], "%f", &delta_coef);
 		} else if (argc==3 && strcmp(argv[1], "initcur") == 0) {
 			sscanf(argv[2], "%f", &init_cur);
+		} else if (argc==3 && strcmp(argv[1], "kp") == 0) {
+			sscanf(argv[2], "%lf", &Kp);
+		} else if (argc==3 && strcmp(argv[1], "kd") == 0) {
+			sscanf(argv[2], "%lf", &Kd);
+		} else if (argc==3 && strcmp(argv[1], "ki") == 0) {
+			sscanf(argv[2], "%lf", &Ki);
 		}
 
     }
@@ -172,7 +157,8 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	commands_printf("   Target RPM: %.1f", (double)target_rpm);
 	commands_printf("   Initial Current: %.1f", (double)init_cur);
 	commands_printf("   Min Current: %.1f", (double)min_current);
-	commands_printf("   Delta Coefficient: %.5f", (double)delta_coef);
-	commands_printf("   Direction: %d", direction);
+	commands_printf("   Kp: %.5f", Kp);
+	commands_printf("   Kd: %.5f", Kd);
+	commands_printf("   Ki: %.5f", Ki);
 	commands_printf(" ");
 }
