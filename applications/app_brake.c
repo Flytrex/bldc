@@ -30,6 +30,7 @@
 #include "commands.h"
 
 #include "pid.h"
+#include "app_brake.h"
 
 
 #define GEN_UPDATE_RATE_HZ	1000
@@ -46,8 +47,8 @@ static volatile float target_rpm = 4000;
 static volatile float init_cur = 20;
 static volatile float min_current = 0;
 static volatile double Kp = -0.01;
-static volatile double Kd = -5;
-static volatile double Ki = -0.00001;
+static volatile double Ki = 0;
+static volatile double Kd = 0;
 
 
 // Threads
@@ -83,23 +84,41 @@ void app_custom_configure(app_configuration *conf) {
 
 
 
+static volatile float delta = 1;
+static volatile float brake_rpm_val = 0;
+static volatile float brake_current_val = 0;
+
+float brake_rpm(void){
+	return brake_rpm_val;
+}
+
+float brake_current(void){
+	return brake_current_val;
+}
 
 static THD_FUNCTION(gen_thread, arg) {
 	(void)arg;
 
 	is_running = true;
 	PID pid;
+	float current = MAX_CURRENT;
 	for(;;) {
 		if (is_active) {
 			const float rpm_now = fabsf(mc_interface_get_rpm());
-			float current;
 			if (rpm_now < RPM_THRESHOLD){
 				current = init_cur;
-				pid = pid_init(SLEEP_TIME, MAX_CURRENT, min_current, Kp, Kd, Ki);
+				pid = pid_init(SLEEP_TIME, delta, -delta, Kp, Kd, Ki);
 			}
 			else
-				current = pid_calc(&pid, target_rpm, rpm_now);
+				current += (float)pid_calc(&pid, target_rpm, rpm_now);
+			
+			if (current > MAX_CURRENT)
+				current = MAX_CURRENT;
+			else if (current < min_current)
+				current = min_current;
 
+			brake_rpm_val = rpm_now;
+			brake_current_val = current;
 			mc_interface_set_brake_current(current);
 		}
 
@@ -140,14 +159,15 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 			sscanf(argv[2], "%f", &min_current);
 		} else if (argc==3 && strcmp(argv[1], "initcur") == 0) {
 			sscanf(argv[2], "%f", &init_cur);
+		} else if (argc==3 && strcmp(argv[1], "delta") == 0) {
+			sscanf(argv[2], "%f", &delta);
 		} else if (argc==3 && strcmp(argv[1], "kp") == 0) {
 			sscanf(argv[2], "%lf", &Kp);
-		} else if (argc==3 && strcmp(argv[1], "kd") == 0) {
-			sscanf(argv[2], "%lf", &Kd);
 		} else if (argc==3 && strcmp(argv[1], "ki") == 0) {
 			sscanf(argv[2], "%lf", &Ki);
+		} else if (argc==3 && strcmp(argv[1], "kd") == 0) {
+			sscanf(argv[2], "%lf", &Kd);
 		}
-
     }
 
    	commands_printf("Brake Status");
@@ -157,8 +177,9 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	commands_printf("   Target RPM: %.1f", (double)target_rpm);
 	commands_printf("   Initial Current: %.1f", (double)init_cur);
 	commands_printf("   Min Current: %.1f", (double)min_current);
-	commands_printf("   Kp: %.5f", Kp);
-	commands_printf("   Kd: %.5f", Kd);
-	commands_printf("   Ki: %.5f", Ki);
+	commands_printf("   Delta: %.5f", (double)delta);
+	commands_printf("   Kp: %.6f", Kp);
+	commands_printf("   Ki: %.6f", Ki);
+	commands_printf("   Kd: %.6f", Kd);
 	commands_printf(" ");
 }

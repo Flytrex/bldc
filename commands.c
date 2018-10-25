@@ -44,6 +44,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include "applications/app_brake.h"
+
 // Threads
 static THD_FUNCTION(detect_thread, arg);
 static THD_WORKING_AREA(detect_thread_wa, 2048);
@@ -167,10 +169,10 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		buffer_append_float16(send_buffer, mc_interface_temp_fet_filtered(), 1e1, &ind);
 		buffer_append_float16(send_buffer, mc_interface_temp_motor_filtered(), 1e1, &ind);
 		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_motor_current(), 1e2, &ind);
-		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_input_current(), 1e2, &ind);
+		buffer_append_float32(send_buffer, brake_current(), 1e2, &ind); // current
 		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_id(), 1e2, &ind);
 		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_iq(), 1e2, &ind);
-		buffer_append_float16(send_buffer, mc_interface_get_duty_cycle_now(), 1e3, &ind);
+		buffer_append_float16(send_buffer, brake_rpm()/1000, 1e3, &ind); // rpm / 1000
 		buffer_append_float32(send_buffer, mc_interface_get_rpm(), 1e0, &ind);
 		buffer_append_float16(send_buffer, GET_INPUT_VOLTAGE(), 1e1, &ind);
 		buffer_append_float32(send_buffer, mc_interface_get_amp_hours(false), 1e4, &ind);
@@ -245,6 +247,12 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 #endif
 		break;
 
+	case COMM_SET_ALLOW_BRAKING:
+		mcconf = *mc_interface_get_configuration();
+		ind = 0;
+		mcconf.s_pid_allow_braking = data[ind++];
+		break;
+			
 	case COMM_SET_MCCONF:
 		mcconf = *mc_interface_get_configuration();
 
