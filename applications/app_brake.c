@@ -107,15 +107,10 @@ static THD_FUNCTION(gen_thread, arg) {
 			const float rpm_now = fabsf(mc_interface_get_rpm());
 			if (rpm_now < RPM_THRESHOLD){
 				current = init_cur;
-				pid = pid_init(SLEEP_TIME, delta, -delta, Kp, Kd, Ki);
+				pid = pid_init(1.0/GEN_UPDATE_RATE_HZ, MAX_CURRENT, min_current, Kp, Kd, Ki);
 			}
 			else
-				current += (float)pid_calc(&pid, target_rpm, rpm_now);
-			
-			if (current > MAX_CURRENT)
-				current = MAX_CURRENT;
-			else if (current < min_current)
-				current = min_current;
+				current = (float)pid_calc(&pid, target_rpm, rpm_now);
 
 			brake_rpm_val = rpm_now;
 			brake_current_val = current;

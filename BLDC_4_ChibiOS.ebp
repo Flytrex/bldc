@@ -921,6 +921,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="packet.h" />
+		<Unit filename="pid.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="servo_dec.c">
 			<Option compilerVar="CC" />
 		</Unit>
