@@ -30,7 +30,6 @@
 #include "commands.h"
 
 #include "pid.h"
-#include "app_brake.h"
 
 
 #define GEN_UPDATE_RATE_HZ	1000
