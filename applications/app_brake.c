@@ -84,7 +84,6 @@ void app_custom_configure(app_configuration *conf) {
 
 
 
-static volatile float delta = 1;
 static volatile float brake_rpm_val = 0;
 static volatile float brake_current_val = 0;
 
@@ -154,8 +153,6 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 			sscanf(argv[2], "%f", &min_current);
 		} else if (argc==3 && strcmp(argv[1], "initcur") == 0) {
 			sscanf(argv[2], "%f", &init_cur);
-		} else if (argc==3 && strcmp(argv[1], "delta") == 0) {
-			sscanf(argv[2], "%f", &delta);
 		} else if (argc==3 && strcmp(argv[1], "kp") == 0) {
 			sscanf(argv[2], "%lf", &Kp);
 		} else if (argc==3 && strcmp(argv[1], "ki") == 0) {
@@ -172,7 +169,6 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	commands_printf("   Target RPM: %.1f", (double)target_rpm);
 	commands_printf("   Initial Current: %.1f", (double)init_cur);
 	commands_printf("   Min Current: %.1f", (double)min_current);
-	commands_printf("   Delta: %.5f", (double)delta);
 	commands_printf("   Kp: %.6f", Kp);
 	commands_printf("   Ki: %.6f", Ki);
 	commands_printf("   Kd: %.6f", Kd);
