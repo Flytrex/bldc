@@ -1168,11 +1168,11 @@ static void run_pid_control_speed(void) {
 
 	// Optionally disable braking
 	if (!conf->s_pid_allow_braking) {
-		if (rpm < 0.0 && output < 0.0) {
+		if (rpm > 0.0 && output < 0.0) {
 			output = 0.0;
 		}
 
-		if (rpm > 0.0 && output > 0.0) {
+		if (rpm < 0.0 && output > 0.0) {
 			output = 0.0;
 		}
 	}
