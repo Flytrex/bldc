@@ -28,6 +28,7 @@
 // for debug terminal functionality
 #include "terminal.h"
 #include "commands.h"
+#include "utils.h"
 
 #include "pid.h"
 #include "app_brake.h"
@@ -37,14 +38,14 @@
 
 #define MAX_CURRENT 20.0
 
-#define RPM_THRESHOLD 50
+#define RPM_THRESHOLD 150
 
 static volatile bool stop_now = true;
 static volatile bool is_running = false;
 static volatile bool is_active = false;
-static volatile float target_rpm = 4000;
-static volatile double Kp = -0.01;
-static volatile double Ki = 0;
+static volatile float target_rpm = 1000;
+static volatile double Kp = 0.005;
+static volatile double Ki = 0.03;
 static volatile double Kd = 0;
 
 // Threads
@@ -94,16 +95,19 @@ static THD_FUNCTION(gen_thread, arg) {
 	PID pid;
 	for(;;) {
 		if (is_active) {
-			const float rpm_now = fabsf(mc_interface_get_rpm());
+            float current = 0;
+			const float rpm_now_dir = mc_interface_get_rpm();
+			const float rpm_now = fabsf(rpm_now_dir);
+
 			if (rpm_now < RPM_THRESHOLD){
 				pid = pid_init(1.0/GEN_UPDATE_RATE_HZ, MAX_CURRENT, 0, Kp, Kd, Ki);
 			}
 			else
-				current = (float)pid_calc(&pid, target_rpm, rpm_now);
+				current = (float)pid_calc(&pid, rpm_now - target_rpm ); // positive error - too fast, more braking needed
 
-			brake_rpm_val = rpm_now;
+			//mc_interface_set_brake_current(current);
+			mc_interface_set_current(-current * SIGN(rpm_now_dir));
 			brake_current_val = current;
-			mc_interface_set_brake_current(current);
 		}
 
 		// Sleep for a time according to the specified rate
@@ -145,6 +149,10 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 			sscanf(argv[2], "%lf", &Ki);
 		} else if (argc==3 && strcmp(argv[1], "kd") == 0) {
 			sscanf(argv[2], "%lf", &Kd);
+		} else if (argc==5 && strcmp(argv[1], "pid") == 0) {
+			sscanf(argv[2], "%lf", &Kp);
+			sscanf(argv[3], "%lf", &Ki);
+			sscanf(argv[4], "%lf", &Kd);
 		}
     }
 
