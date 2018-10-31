@@ -17,8 +17,8 @@ typedef struct PID{
 PID pid_init(double dt, double max, double min, double Kp, double Kd, double Ki);
 
 
-// Returns the manipulated variable given a setpoint and current process value
-double pid_calc(PID *pid, double setpoint, double pv );
+// Returns the manipulated variable given an error between setpoint and current process value
+double pid_calc(PID *pid, double error );
 
 
 #endif

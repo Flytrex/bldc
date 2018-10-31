@@ -43,12 +43,9 @@ static volatile bool stop_now = true;
 static volatile bool is_running = false;
 static volatile bool is_active = false;
 static volatile float target_rpm = 4000;
-static volatile float init_cur = 20;
-static volatile float min_current = 0;
 static volatile double Kp = -0.01;
 static volatile double Ki = 0;
 static volatile double Kd = 0;
-
 
 // Threads
 static THD_FUNCTION(gen_thread, arg);
@@ -83,7 +80,6 @@ void app_custom_configure(app_configuration *conf) {
 
 
 
-static volatile float brake_rpm_val = 0;
 static volatile float brake_current_val = 0;
 
 
@@ -96,13 +92,11 @@ static THD_FUNCTION(gen_thread, arg) {
 
 	is_running = true;
 	PID pid;
-	float current = MAX_CURRENT;
 	for(;;) {
 		if (is_active) {
 			const float rpm_now = fabsf(mc_interface_get_rpm());
 			if (rpm_now < RPM_THRESHOLD){
-				current = init_cur;
-				pid = pid_init(1.0/GEN_UPDATE_RATE_HZ, MAX_CURRENT, min_current, Kp, Kd, Ki);
+				pid = pid_init(1.0/GEN_UPDATE_RATE_HZ, MAX_CURRENT, 0, Kp, Kd, Ki);
 			}
 			else
 				current = (float)pid_calc(&pid, target_rpm, rpm_now);
@@ -145,10 +139,6 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
         	float limit = 0.0;
             sscanf(argv[2], "%f", &limit);
             mc_interface_set_current_limit2(limit);
-        } else if (argc==3 && strcmp(argv[1], "mincur") == 0) {
-			sscanf(argv[2], "%f", &min_current);
-		} else if (argc==3 && strcmp(argv[1], "initcur") == 0) {
-			sscanf(argv[2], "%f", &init_cur);
 		} else if (argc==3 && strcmp(argv[1], "kp") == 0) {
 			sscanf(argv[2], "%lf", &Kp);
 		} else if (argc==3 && strcmp(argv[1], "ki") == 0) {
@@ -163,8 +153,6 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	commands_printf("   App running: %s", is_running ? "On" : "Off");
 	commands_printf("   Active: %s", is_active ? "On" : "Off");
 	commands_printf("   Target RPM: %.1f", (double)target_rpm);
-	commands_printf("   Initial Current: %.1f", (double)init_cur);
-	commands_printf("   Min Current: %.1f", (double)min_current);
 	commands_printf("   Kp: %.6f", Kp);
 	commands_printf("   Ki: %.6f", Ki);
 	commands_printf("   Kd: %.6f", Kd);
