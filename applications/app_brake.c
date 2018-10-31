@@ -30,7 +30,7 @@
 #include "commands.h"
 
 #include "pid.h"
-
+#include "app_brake.h"
 
 #define GEN_UPDATE_RATE_HZ	1000
 #define SLEEP_TIME (CH_CFG_ST_FREQUENCY / GEN_UPDATE_RATE_HZ)
@@ -86,11 +86,8 @@ void app_custom_configure(app_configuration *conf) {
 static volatile float brake_rpm_val = 0;
 static volatile float brake_current_val = 0;
 
-float brake_rpm(void){
-	return brake_rpm_val;
-}
 
-float brake_current(void){
+float app_brake_current(void){
 	return brake_current_val;
 }
 

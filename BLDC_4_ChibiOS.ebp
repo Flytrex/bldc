@@ -41,6 +41,7 @@
 		<Unit filename="applications\app_brake.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="applications\app_brake.h" />
 		<Unit filename="applications\app_custom.c">
 			<Option compilerVar="CC" />
 		</Unit>
