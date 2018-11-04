@@ -422,6 +422,8 @@ void terminal_process_string(char *str) {
 		}
 	} else if (strcmp(argv[0], "limits") == 0) {
         mc_interface_print_limits();
+	} else if (strcmp(argv[0], "encoder") == 0) {
+        commands_printf("SPI val:%x, errors:%d", (unsigned int)encoder_spi_get_val(), encoder_spi_get_error_cnt());
 	}
 	// The help command
 	else if (strcmp(argv[0], "help") == 0) {
