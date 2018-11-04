@@ -2,23 +2,23 @@
 #define _PID_H_
 
 typedef struct PID{
-	double dt; // loop interval time
-	double max; // maximum value of manipulated variable
-	double min; // minimum value of manipulated variable
-	double Kp; // proportional gain
-	double Kd; // derivative gain
-	double Ki; // Integral gain
-	double pre_error;
-	double integral;
+	float dt; // loop interval time
+	float max; // maximum value of manipulated variable
+	float min; // minimum value of manipulated variable
+	float Kp; // proportional gain
+	float Kd; // derivative gain
+	float Ki; // Integral gain
+	float pre_error;
+	float integral;
 } PID;
 
 
 // Returns an initialized PID
-PID pid_init(double dt, double max, double min, double Kp, double Kd, double Ki);
+PID pid_init(float dt, float max, float min, float Kp, float Kd, float Ki);
 
 
 // Returns the manipulated variable given an error between setpoint and current process value
-double pid_calc(PID *pid, double error );
+float pid_calc(PID *pid, float error );
 
 
 #endif

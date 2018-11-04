@@ -3,7 +3,7 @@
 
 #include "pid.h"
 
-int utils_truncate_number_d(double *number, double min, double max) {
+int utils_truncate_number_d(float *number, float min, float max) {
 	int did_trunc = 0;
 
 	if (*number > max) {
@@ -19,7 +19,7 @@ int utils_truncate_number_d(double *number, double min, double max) {
 
 
 
-PID pid_init( double dt, double max, double min, double Kp, double Kd, double Ki ){
+PID pid_init( float dt, float max, float min, float Kp, float Kd, float Ki ){
 	PID pid;
 
 	pid.dt = dt;
@@ -35,26 +35,26 @@ PID pid_init( double dt, double max, double min, double Kp, double Kd, double Ki
 }
 
 
-double pid_calc(PID *pid, double error){
+float pid_calc(PID *pid, float error){
     // Calculate error
-    //double error = setpoint - pv;
+    //float error = setpoint - pv;
 
     // Proportional term
-    double Pout = pid->Kp * error;
+    float Pout = pid->Kp * error;
 
     // Integral term
     pid->integral += error * pid->dt;
-    double Iout = pid->Ki * pid->integral;
+    float Iout = pid->Ki * pid->integral;
 
     // I-term  windup protection
-    utils_truncate_number_d(&pid->integral, -pid->max*2, pid->max*2);
+    //utils_truncate_number_d(&pid->integral, -pid->max*2, pid->max*2);
 
     // Derivative term
-    double derivative = (error - pid->pre_error) / pid->dt;
-    double Dout = pid->Kd * derivative;
+    float derivative = (error - pid->pre_error) / pid->dt;
+    float Dout = pid->Kd * derivative;
 
     // Calculate total output
-    double output = Pout + Iout + Dout;
+    float output = Pout + Iout + Dout;
 
     // Restrict to max/min
     utils_truncate_number_d(&output, pid->min, pid->max);

@@ -44,9 +44,9 @@ static volatile bool stop_now = true;
 static volatile bool is_running = false;
 static volatile bool is_active = false;
 static volatile float target_rpm = 1000;
-static volatile double Kp = 0.005;
-static volatile double Ki = 0.03;
-static volatile double Kd = 0;
+static volatile float Kp = 0.005;
+static volatile float Ki = 0.03;
+static volatile float Kd = 0;
 
 // Threads
 static THD_FUNCTION(gen_thread, arg);
@@ -144,15 +144,15 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
             sscanf(argv[2], "%f", &limit);
             mc_interface_set_current_limit2(limit);
 		} else if (argc==3 && strcmp(argv[1], "kp") == 0) {
-			sscanf(argv[2], "%lf", &Kp);
+			sscanf(argv[2], "%f", &Kp);
 		} else if (argc==3 && strcmp(argv[1], "ki") == 0) {
-			sscanf(argv[2], "%lf", &Ki);
+			sscanf(argv[2], "%f", &Ki);
 		} else if (argc==3 && strcmp(argv[1], "kd") == 0) {
-			sscanf(argv[2], "%lf", &Kd);
+			sscanf(argv[2], "%f", &Kd);
 		} else if (argc==5 && strcmp(argv[1], "pid") == 0) {
-			sscanf(argv[2], "%lf", &Kp);
-			sscanf(argv[3], "%lf", &Ki);
-			sscanf(argv[4], "%lf", &Kd);
+			sscanf(argv[2], "%f", &Kp);
+			sscanf(argv[3], "%f", &Ki);
+			sscanf(argv[4], "%f", &Kd);
 		}
     }
 
@@ -161,8 +161,7 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	commands_printf("   App running: %s", is_running ? "On" : "Off");
 	commands_printf("   Active: %s", is_active ? "On" : "Off");
 	commands_printf("   Target RPM: %.1f", (double)target_rpm);
-	commands_printf("   Kp: %.6f", Kp);
-	commands_printf("   Ki: %.6f", Ki);
-	commands_printf("   Kd: %.6f", Kd);
-	commands_printf(" ");
+	commands_printf("   Kp: %.6f", (double)Kp);
+	commands_printf("   Ki: %.6f", (double)Ki);
+	commands_printf("   Kd: %.6f", (double)Kd);
 }
