@@ -183,6 +183,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		send_buffer[ind++] = mc_interface_get_fault();
 		buffer_append_float32(send_buffer, mc_interface_get_pid_pos_now(), 1e6, &ind);
 		send_buffer[ind++] = app_get_configuration()->controller_id;
+		buffer_append_int32(send_buffer, ST2MS(chVTGetSystemTime()), &ind); // current timestamp in milliseconds
 		commands_send_packet(send_buffer, ind);
 		break;
 
