@@ -82,9 +82,14 @@ void app_custom_configure(app_configuration *conf) {
 
 
 static volatile float brake_current_val = 0;
+static volatile float brake_rpm_error = 0;
 
 
-float app_brake_current(void){
+float app_brake_rpm_error(void){
+	return brake_rpm_error;
+}
+
+float app_brake_current_command(void){
 	return brake_current_val;
 }
 
@@ -98,15 +103,20 @@ static THD_FUNCTION(gen_thread, arg) {
             float current = 0;
 			const float rpm_now_dir = mc_interface_get_rpm();
 			const float rpm_now = fabsf(rpm_now_dir);
+			const float rpm_error = rpm_now - target_rpm;
 
 			if (rpm_now < RPM_THRESHOLD){
 				pid = pid_init(1.0/GEN_UPDATE_RATE_HZ, MAX_CURRENT, 0, Kp, Kd, Ki);
 			}
 			else
-				current = (float)pid_calc(&pid, rpm_now - target_rpm ); // positive error - too fast, more braking needed
+				current = (float)pid_calc(&pid, rpm_error ); // positive error - too fast, more braking needed
 
 			//mc_interface_set_brake_current(current);
-			mc_interface_set_current(-current * SIGN(rpm_now_dir));
+			current *= -SIGN(rpm_now_dir);
+			mc_interface_set_current(current);
+
+			// for reporting
+			brake_rpm_error = rpm_error/1000;
 			brake_current_val = current;
 		}
 
@@ -164,4 +174,5 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	commands_printf("   Kp: %.6f", (double)Kp);
 	commands_printf("   Ki: %.6f", (double)Ki);
 	commands_printf("   Kd: %.6f", (double)Kd);
+	commands_printf("2 ");
 }
