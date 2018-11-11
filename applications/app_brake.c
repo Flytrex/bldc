@@ -45,7 +45,7 @@ static volatile bool is_running = false;
 static volatile bool is_active = false;
 static volatile float target_rpm = 1000;
 static volatile float Kp = 0.005;
-static volatile float Ki = 0.03;
+static volatile float Ki = 0.015;
 static volatile float Kd = 0;
 
 // Threads
