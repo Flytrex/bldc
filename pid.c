@@ -43,11 +43,11 @@ float pid_calc(PID *pid, float error){
     float Pout = pid->Kp * error;
 
     // Integral term
-    pid->integral += error * pid->dt;
-    float Iout = pid->Ki * pid->integral;
+    pid->integral += error * pid->dt * pid->Ki;
+    float Iout =  pid->integral;
 
     // I-term  windup protection
-    //utils_truncate_number_d(&pid->integral, -pid->max*2, pid->max*2);
+    utils_truncate_number_d(&pid->integral, -pid->max, pid->max);
 
     // Derivative term
     float derivative = (error - pid->pre_error) / pid->dt;
