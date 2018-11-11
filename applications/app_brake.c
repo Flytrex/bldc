@@ -174,5 +174,5 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 	commands_printf("   Kp: %.6f", (double)Kp);
 	commands_printf("   Ki: %.6f", (double)Ki);
 	commands_printf("   Kd: %.6f", (double)Kd);
-	commands_printf("2 ");
+	commands_printf(" ");
 }
