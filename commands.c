@@ -187,6 +187,22 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		commands_send_packet(send_buffer, ind);
 		break;
 
+    case COMM_GET_TELEM:
+		ind = 0;
+		send_buffer[ind++] = COMM_GET_TELEM;
+		// fill the buffer
+		buffer_append_int32(send_buffer, ST2MS(chVTGetSystemTime()), &ind); // current timestamp in milliseconds
+		buffer_append_float32(send_buffer, mc_interface_get_rpm(), 1e0, &ind);
+		buffer_append_int32(send_buffer, mc_interface_get_tachometer_value(false), &ind);
+		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_motor_current(), 1e2, &ind);
+		buffer_append_float32(send_buffer, app_brake_current_integral_val(), 1e2, &ind);
+		buffer_append_float32(send_buffer, app_brake_current_command(), 1e2, &ind);
+		buffer_append_float32(send_buffer, app_brake_rpm_error(), 1e2, &ind);
+		send_buffer[ind++] = mc_interface_get_fault();
+
+		commands_send_packet(send_buffer, ind);
+        break;
+
 	case COMM_SET_DUTY:
 		ind = 0;
 		mc_interface_set_duty((float)buffer_get_int32(data, &ind) / 100000.0);

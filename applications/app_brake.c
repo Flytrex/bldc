@@ -83,6 +83,7 @@ void app_custom_configure(app_configuration *conf) {
 
 static volatile float brake_current_val = 0;
 static volatile float brake_rpm_error = 0;
+static volatile float current_integral_val = 0;
 
 
 float app_brake_rpm_error(void){
@@ -91,6 +92,10 @@ float app_brake_rpm_error(void){
 
 float app_brake_current_command(void){
 	return brake_current_val;
+}
+
+float app_brake_current_integral_val(void){
+	return current_integral_val;
 }
 
 static THD_FUNCTION(gen_thread, arg) {
@@ -118,6 +123,7 @@ static THD_FUNCTION(gen_thread, arg) {
 			// for reporting
 			brake_rpm_error = rpm_error/1000;
 			brake_current_val = current;
+			current_integral_val = pid.integral;
 		}
 
 		// Sleep for a time according to the specified rate
