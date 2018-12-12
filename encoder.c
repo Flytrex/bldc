@@ -290,7 +290,9 @@ static void spi_transfer(uint16_t *in_buf, const uint16_t *out_buf, int length) 
 			int r1, r2, r3;
 			r1 = palReadPad(SPI_SW_MISO_GPIO, SPI_SW_MISO_PIN);
 			__NOP();
+			__NOP();
 			r2 = palReadPad(SPI_SW_MISO_GPIO, SPI_SW_MISO_PIN);
+			__NOP();
 			__NOP();
 			r3 = palReadPad(SPI_SW_MISO_GPIO, SPI_SW_MISO_PIN);
 
@@ -318,6 +320,10 @@ static void spi_end(void) {
 }
 
 static void spi_delay(void) {
+	__NOP();
+	__NOP();
+	__NOP();
+	__NOP();
 	__NOP();
 	__NOP();
 	__NOP();
