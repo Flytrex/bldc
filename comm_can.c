@@ -230,10 +230,11 @@ static THD_FUNCTION(cancom_process_thread, arg) {
 										| (unsigned short) crc_low)) {
 
 							if (commands_send) {
-								commands_send_packet(rx_buffer, rxbuf_len);
+                                // to check if the intention is to send the packet to other channel, if so need to find a way to specify which explicitly
+								//commands_send_packet(rx_buffer, rxbuf_len);
 							} else {
-								commands_set_send_func(send_packet_wrapper);
-								commands_process_packet(rx_buffer, rxbuf_len);
+								//commands_set_send_func(send_packet_wrapper);
+								commands_process_packet(rx_buffer, rxbuf_len, send_packet_wrapper);
 							}
 						}
 						break;
@@ -244,10 +245,11 @@ static THD_FUNCTION(cancom_process_thread, arg) {
 						commands_send = rxmsg.data8[ind++];
 
 						if (commands_send) {
-							commands_send_packet(rxmsg.data8 + ind, rxmsg.DLC - ind);
+							// to check if the intention is to send the packet to other channel, if so need to find a way to specify which explicitly
+							//commands_send_packet(rxmsg.data8 + ind, rxmsg.DLC - ind);
 						} else {
-							commands_set_send_func(send_packet_wrapper);
-							commands_process_packet(rxmsg.data8 + ind, rxmsg.DLC - ind);
+							//commands_set_send_func(send_packet_wrapper);
+							commands_process_packet(rxmsg.data8 + ind, rxmsg.DLC - ind, send_packet_wrapper);
 						}
 						break;
 

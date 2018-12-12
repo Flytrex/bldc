@@ -63,9 +63,12 @@ static void(*send_func)(unsigned char *data, unsigned int len) = 0;
 static void(*send_func_last)(unsigned char *data, unsigned int len) = 0;
 static void(*appdata_func)(unsigned char *data, unsigned int len) = 0;
 static disp_pos_mode display_position_mode;
+static SendFunc_t send_func_printf = 0;
+static mutex_t command_mtx;
 
 void commands_init(void) {
 	chThdCreateStatic(detect_thread_wa, sizeof(detect_thread_wa), NORMALPRIO, detect_thread, NULL);
+	chMtxObjectInit(&command_mtx);
 }
 
 /**
@@ -87,11 +90,20 @@ void commands_set_send_func(void(*func)(unsigned char *data, unsigned int len)) 
  * @param len
  * The data length.
  */
-void commands_send_packet(unsigned char *data, unsigned int len) {
+
+void commands_send_packet_global(unsigned char *data, unsigned int len) {
 	if (send_func) {
 		send_func(data, len);
 	}
 }
+
+
+void commands_send_packet(unsigned char *data, unsigned int len, SendFunc_t send_func_p) {
+	if (send_func_p) {
+		send_func_p(data, len);
+	}
+}
+
 
 /**
  * Process a received buffer with commands and data.
@@ -102,7 +114,7 @@ void commands_send_packet(unsigned char *data, unsigned int len) {
  * @param len
  * The length of the buffer.
  */
-void commands_process_packet(unsigned char *data, unsigned int len) {
+void commands_process_packet(unsigned char *data, unsigned int len, SendFunc_t send_func_p) {
 	if (!len) {
 		return;
 	}
@@ -134,7 +146,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		ind += 12;
 #endif
 
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_JUMP_TO_BOOTLOADER:
@@ -148,7 +160,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		ind = 0;
 		send_buffer[ind++] = COMM_ERASE_NEW_APP;
 		send_buffer[ind++] = flash_res == FLASH_COMPLETE ? 1 : 0;
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_WRITE_NEW_APP_DATA:
@@ -159,7 +171,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		ind = 0;
 		send_buffer[ind++] = COMM_WRITE_NEW_APP_DATA;
 		send_buffer[ind++] = flash_res == FLASH_COMPLETE ? 1 : 0;
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_GET_VALUES:
@@ -184,7 +196,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		buffer_append_float32(send_buffer, mc_interface_get_pid_pos_now(), 1e6, &ind);
 		send_buffer[ind++] = app_get_configuration()->controller_id;
 		buffer_append_int32(send_buffer, ST2MS(chVTGetSystemTime()), &ind); // current timestamp in milliseconds
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
     case COMM_GET_TELEM:
@@ -200,7 +212,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		buffer_append_float32(send_buffer, app_brake_rpm_error(), 1e2, &ind);
 		send_buffer[ind++] = mc_interface_get_fault();
 
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
         break;
 
 	case COMM_SET_DUTY:
@@ -419,7 +431,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 
 		ind = 0;
 		send_buffer[ind++] = packet_id;
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_GET_MCCONF:
@@ -539,7 +551,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		buffer_append_float32_auto(send_buffer, mcconf.m_ntc_motor_beta, &ind);
 		send_buffer[ind++] = mcconf.m_out_aux_mode;
 
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_SET_APPCONF:
@@ -626,7 +638,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 
 		ind = 0;
 		send_buffer[ind++] = packet_id;
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_GET_APPCONF:
@@ -654,7 +666,12 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 
 	case COMM_TERMINAL_CMD:
 		data[len] = '\0';
+		// protect the callback with mutex
+        chMtxLock(&command_mtx);
+		send_func_printf = send_func_p;
 		terminal_process_string((char*)data);
+        chMtxUnlock(&command_mtx);
+
 		break;
 
 	case COMM_DETECT_MOTOR_PARAM:
@@ -694,7 +711,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		if (send_func_last) {
 			send_func_last(send_buffer, ind);
 		} else {
-			commands_send_packet(send_buffer, ind);
+			commands_send_packet(send_buffer, ind, send_func_p);
 		}
 	}
 	break;
@@ -721,7 +738,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		if (send_func_last) {
 			send_func_last(send_buffer, ind);
 		} else {
-			commands_send_packet(send_buffer, ind);
+			commands_send_packet(send_buffer, ind, send_func_p);
 		}
 	}
 	break;
@@ -756,7 +773,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 			if (send_func_last) {
 				send_func_last(send_buffer, ind);
 			} else {
-				commands_send_packet(send_buffer, ind);
+				commands_send_packet(send_buffer, ind, send_func_p);
 			}
 		} else {
 			ind = 0;
@@ -764,7 +781,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 			buffer_append_float32(send_buffer, 1001.0, 1e6, &ind);
 			buffer_append_float32(send_buffer, 0.0, 1e6, &ind);
 			send_buffer[ind++] = false;
-			commands_send_packet(send_buffer, ind);
+			commands_send_packet(send_buffer, ind, send_func_p);
 		}
 	}
 	break;
@@ -798,7 +815,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 			if (send_func_last) {
 				send_func_last(send_buffer, ind);
 			} else {
-				commands_send_packet(send_buffer, ind);
+				commands_send_packet(send_buffer, ind, send_func_p);
 			}
 		} else {
 			ind = 0;
@@ -825,7 +842,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		send_buffer[ind++] = COMM_GET_DECODED_PPM;
 		buffer_append_int32(send_buffer, (int32_t)(app_ppm_get_decoded_level() * 1000000.0), &ind);
 		buffer_append_int32(send_buffer, (int32_t)(servodec_get_last_pulse_len(0) * 1000000.0), &ind);
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_GET_DECODED_ADC:
@@ -835,14 +852,14 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		buffer_append_int32(send_buffer, (int32_t)(app_adc_get_voltage() * 1000000.0), &ind);
 		buffer_append_int32(send_buffer, (int32_t)(app_adc_get_decoded_level2() * 1000000.0), &ind);
 		buffer_append_int32(send_buffer, (int32_t)(app_adc_get_voltage2() * 1000000.0), &ind);
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_GET_DECODED_CHUK:
 		ind = 0;
 		send_buffer[ind++] = COMM_GET_DECODED_CHUK;
 		buffer_append_int32(send_buffer, (int32_t)(app_nunchuk_get_decoded_chuk() * 1000000.0), &ind);
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_FORWARD_CAN:
@@ -874,7 +891,7 @@ void commands_process_packet(unsigned char *data, unsigned int len) {
 		ind = 0;
 		send_buffer[ind++] = packet_id;
 		send_buffer[ind++] = NRF_PAIR_STARTED;
-		commands_send_packet(send_buffer, ind);
+		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
 	case COMM_SET_CURRENT_LIMIT2:
@@ -898,8 +915,9 @@ void commands_printf(const char* format, ...) {
 	len = vsnprintf(print_buffer+1, 254, format, arg);
 	va_end (arg);
 
-	if(len > 0) {
-		commands_send_packet((unsigned char*)print_buffer, (len<254)? len+1: 255);
+	if(len > 0 && send_func_printf) {
+		//commands_send_packet_global((unsigned char*)print_buffer, (len<254)? len+1: 255);
+		send_func_printf((unsigned char*)print_buffer, (len<254)? len+1: 255);
 	}
 }
 
@@ -910,7 +928,7 @@ void commands_send_rotor_pos(float rotor_pos) {
 	buffer[index++] = COMM_ROTOR_POSITION;
 	buffer_append_int32(buffer, (int32_t)(rotor_pos * 100000.0), &index);
 
-	commands_send_packet(buffer, index);
+	commands_send_packet_global(buffer, index);
 }
 
 void commands_send_experiment_samples(float *samples, int len) {
@@ -927,7 +945,7 @@ void commands_send_experiment_samples(float *samples, int len) {
 		buffer_append_int32(buffer, (int32_t)(samples[i] * 10000.0), &index);
 	}
 
-	commands_send_packet(buffer, index);
+	commands_send_packet_global(buffer, index);
 }
 
 disp_pos_mode commands_get_disp_pos_mode(void) {
@@ -945,7 +963,7 @@ void commands_send_app_data(unsigned char *data, unsigned int len) {
 	memcpy(send_buffer + index, data, len);
 	index += len;
 
-	commands_send_packet(send_buffer, index);
+	commands_send_packet_global(send_buffer, index);
 }
 
 void commands_send_appconf(COMM_PACKET_ID packet_id, app_configuration *appconf) {
@@ -1024,7 +1042,7 @@ void commands_send_appconf(COMM_PACKET_ID packet_id, app_configuration *appconf)
 	ind += 3;
 	send_buffer[ind++] = appconf->app_nrf_conf.send_crc_ack;
 
-	commands_send_packet(send_buffer, ind);
+	commands_send_packet_global(send_buffer, ind);
 }
 
 static THD_FUNCTION(detect_thread, arg) {
@@ -1055,7 +1073,7 @@ static THD_FUNCTION(detect_thread, arg) {
 		if (send_func_last) {
 			send_func_last(send_buffer, ind);
 		} else {
-			commands_send_packet(send_buffer, ind);
+			commands_send_packet_global(send_buffer, ind);
 		}
 	}
 }
