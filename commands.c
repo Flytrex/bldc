@@ -38,7 +38,7 @@
 #include "packet.h"
 #include "encoder.h"
 #include "nrf_driver.h"
-#include "applications\app_brake.h"
+#include "applications/app_brake.h"
 
 #include <math.h>
 #include <string.h>
