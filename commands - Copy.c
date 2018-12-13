@@ -63,8 +63,7 @@ static void(*send_func)(unsigned char *data, unsigned int len) = 0;
 static void(*send_func_last)(unsigned char *data, unsigned int len) = 0;
 static void(*appdata_func)(unsigned char *data, unsigned int len) = 0;
 static disp_pos_mode display_position_mode;
-static SendFunc_t send_func_printf = 0;
-static mutex_t command_mtx;
+static mutex_t command_mtx; // protects all static data
 
 void commands_process_packet_internal(unsigned char *data, unsigned int len, SendFunc_t send_func_p);
 
@@ -678,7 +677,6 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 
 	case COMM_TERMINAL_CMD:
 		data[len] = '\0';
-		send_func_printf = send_func_p;
 		terminal_process_string((char*)data);
 		break;
 
@@ -923,9 +921,8 @@ void commands_printf(const char* format, ...) {
 	len = vsnprintf(print_buffer+1, 254, format, arg);
 	va_end (arg);
 
-	if(len > 0 && send_func_printf) {
-		//commands_send_packet_global((unsigned char*)print_buffer, (len<254)? len+1: 255);
-		send_func_printf((unsigned char*)print_buffer, (len<254)? len+1: 255);
+	if(len > 0) {
+		commands_send_packet_global((unsigned char*)print_buffer, (len<254)? len+1: 255);
 	}
 }
 
