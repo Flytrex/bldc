@@ -79,7 +79,9 @@ void commands_init(void) {
  * A pointer to the packet sending function.
  */
 void commands_set_send_func(void(*func)(unsigned char *data, unsigned int len)) {
+    chMtxLock(&command_mtx);
 	send_func = func;
+    chMtxUnlock(&command_mtx);
 }
 
 /**
@@ -900,8 +902,8 @@ void commands_printf(const char* format, ...) {
 	va_end (arg);
 
 	if(len > 0 && send_func_printf) {
-		//commands_send_packet_global((unsigned char*)print_buffer, (len<254)? len+1: 255);
-		send_func_printf((unsigned char*)print_buffer, (len<254)? len+1: 255);
+		commands_send_packet_global((unsigned char*)print_buffer, (len<254)? len+1: 255);
+		//send_func_printf((unsigned char*)print_buffer, (len<254)? len+1: 255);
 	}
 }
 
