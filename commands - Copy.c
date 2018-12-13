@@ -38,6 +38,7 @@
 #include "packet.h"
 #include "encoder.h"
 #include "nrf_driver.h"
+#include "applications/app_brake.h"
 
 #include <math.h>
 #include <string.h>
@@ -62,8 +63,7 @@ static void(*send_func)(unsigned char *data, unsigned int len) = 0;
 static void(*send_func_last)(unsigned char *data, unsigned int len) = 0;
 static void(*appdata_func)(unsigned char *data, unsigned int len) = 0;
 static disp_pos_mode display_position_mode;
-static SendFunc_t send_func_printf = 0;
-static mutex_t command_mtx;
+static mutex_t command_mtx; // protects all static data
 
 void commands_process_packet_internal(unsigned char *data, unsigned int len, SendFunc_t send_func_p);
 
@@ -191,9 +191,9 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 		buffer_append_float16(send_buffer, mc_interface_temp_fet_filtered(), 1e1, &ind);
 		buffer_append_float16(send_buffer, mc_interface_temp_motor_filtered(), 1e1, &ind);
 		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_motor_current(), 1e2, &ind);
-		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_input_current(), 1e2, &ind);
-		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_id(), 1e2, &ind);
-		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_iq(), 1e2, &ind);
+		buffer_append_float32(send_buffer, app_brake_current_command(), 1e2, &ind); // mc_interface_read_reset_avg_input_current
+		buffer_append_float32(send_buffer, app_brake_rpm_error(), 1e2, &ind); // mc_interface_read_reset_avg_id
+		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_iq(), 1e2, &ind); // mc_interface_read_reset_avg_iq
 		buffer_append_float16(send_buffer, mc_interface_get_duty_cycle_now(), 1e3, &ind);
 		buffer_append_float32(send_buffer, mc_interface_get_rpm(), 1e0, &ind);
 		buffer_append_float16(send_buffer, GET_INPUT_VOLTAGE(), 1e1, &ind);
@@ -206,8 +206,25 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 		send_buffer[ind++] = mc_interface_get_fault();
 		buffer_append_float32(send_buffer, mc_interface_get_pid_pos_now(), 1e6, &ind);
 		send_buffer[ind++] = app_get_configuration()->controller_id;
+		buffer_append_int32(send_buffer, ST2MS(chVTGetSystemTime()), &ind); // current timestamp in milliseconds
 		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
+
+    case COMM_GET_TELEM:
+		ind = 0;
+		send_buffer[ind++] = COMM_GET_TELEM;
+		// fill the buffer
+		buffer_append_int32(send_buffer, ST2MS(chVTGetSystemTime()), &ind); // current timestamp in milliseconds
+		buffer_append_float32(send_buffer, mc_interface_get_rpm(), 1e0, &ind);
+		buffer_append_int32(send_buffer, mc_interface_get_tachometer_value(false), &ind);
+		buffer_append_float32(send_buffer, mc_interface_read_reset_avg_motor_current(), 1e2, &ind);
+		buffer_append_float32(send_buffer, app_brake_current_integral_val(), 1e2, &ind);
+		buffer_append_float32(send_buffer, app_brake_current_command(), 1e2, &ind);
+		buffer_append_float32(send_buffer, app_brake_rpm_error(), 1e2, &ind);
+		send_buffer[ind++] = mc_interface_get_fault();
+
+		commands_send_packet(send_buffer, ind, send_func_p);
+        break;
 
 	case COMM_SET_DUTY:
 		ind = 0;
@@ -660,7 +677,6 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 
 	case COMM_TERMINAL_CMD:
 		data[len] = '\0';
-		send_func_printf = send_func_p;
 		terminal_process_string((char*)data);
 		break;
 
@@ -884,6 +900,12 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
+	case COMM_SET_CURRENT_LIMIT2:
+		ind = 0;
+		mc_interface_set_current_limit2((float)buffer_get_int32(data, &ind) / 1000.0);
+		timeout_reset();
+		break;
+
 	default:
 		break;
 	}
@@ -899,9 +921,8 @@ void commands_printf(const char* format, ...) {
 	len = vsnprintf(print_buffer+1, 254, format, arg);
 	va_end (arg);
 
-	if(len > 0 && send_func_printf) {
-		//commands_send_packet_global((unsigned char*)print_buffer, (len<254)? len+1: 255);
-		send_func_printf((unsigned char*)print_buffer, (len<254)? len+1: 255);
+	if(len > 0) {
+		commands_send_packet_global((unsigned char*)print_buffer, (len<254)? len+1: 255);
 	}
 }
 
