@@ -100,6 +100,12 @@ void commands_send_packet_global(unsigned char *data, unsigned int len) {
 	}
 }
 
+void commands_send_packet_last(unsigned char *data, unsigned int len) {
+	if (send_func_last) {
+		send_func_last(data, len);
+	}
+}
+
 
 void commands_send_packet(unsigned char *data, unsigned int len, SendFunc_t send_func_p) {
 	if (send_func_p) {
@@ -645,7 +651,7 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 			conf_general_get_default_app_configuration(&appconf);
 		}
 
-		commands_send_appconf(packet_id, &appconf);
+		commands_send_appconf(packet_id, &appconf, send_func_p);
 		break;
 
 	case COMM_SAMPLE_PRINT: {
@@ -877,6 +883,8 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 		break;
 
 	case COMM_NRF_START_PAIRING:
+	    send_func_last = send_func;
+
 		ind = 0;
 		nrf_driver_start_pairing(buffer_get_int32(data, &ind));
 
@@ -917,6 +925,7 @@ void commands_send_rotor_pos(float rotor_pos) {
 	commands_send_packet_global(buffer, index);
 }
 
+// unused
 void commands_send_experiment_samples(float *samples, int len) {
 	if ((len * 4 + 1) > 256) {
 		return;
@@ -942,6 +951,7 @@ void commands_set_app_data_handler(void(*func)(unsigned char *data, unsigned int
 	appdata_func = func;
 }
 
+// unused
 void commands_send_app_data(unsigned char *data, unsigned int len) {
 	int32_t index = 0;
 
@@ -952,7 +962,7 @@ void commands_send_app_data(unsigned char *data, unsigned int len) {
 	commands_send_packet_global(send_buffer, index);
 }
 
-void commands_send_appconf(COMM_PACKET_ID packet_id, app_configuration *appconf) {
+void commands_send_appconf(COMM_PACKET_ID packet_id, app_configuration *appconf, SendFunc_t send_func_p) {
 	int32_t ind = 0;
 	send_buffer[ind++] = packet_id;
 	send_buffer[ind++] = appconf->controller_id;
@@ -1028,7 +1038,7 @@ void commands_send_appconf(COMM_PACKET_ID packet_id, app_configuration *appconf)
 	ind += 3;
 	send_buffer[ind++] = appconf->app_nrf_conf.send_crc_ack;
 
-	commands_send_packet_global(send_buffer, ind);
+	commands_send_packet(send_buffer, ind, send_func_p);
 }
 
 static THD_FUNCTION(detect_thread, arg) {
@@ -1056,10 +1066,6 @@ static THD_FUNCTION(detect_thread, arg) {
 		ind += 8;
 		send_buffer[ind++] = detect_hall_res;
 
-		if (send_func_last) {
-			send_func_last(send_buffer, ind);
-		} else {
-			commands_send_packet_global(send_buffer, ind);
-		}
+		commands_send_packet_last(send_buffer, ind);
 	}
 }

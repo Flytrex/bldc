@@ -1608,7 +1608,7 @@ static THD_FUNCTION(sample_send_thread, arg) {
 			buffer[index++] = m_status_samples[ind_samp];
 			buffer[index++] = m_phase_samples[ind_samp];
 
-			commands_send_packet_global(buffer, index);
+			commands_send_packet_last(buffer, index);
 		}
 	}
 }

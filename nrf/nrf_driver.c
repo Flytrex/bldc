@@ -291,12 +291,12 @@ static THD_FUNCTION(rx_thread, arg) {
 					from_nrf = true;
 					conf_general_store_app_configuration(&appconf);
 					app_set_configuration(&appconf);
-					commands_send_appconf(COMM_GET_APPCONF, &appconf);
+					commands_send_appconf(COMM_GET_APPCONF, &appconf, commands_send_packet_last);
 
 					unsigned char data[2];
 					data[0] = COMM_NRF_START_PAIRING;
 					data[1] = NRF_PAIR_OK;
-					commands_send_packet_global(data, 2);
+					commands_send_packet_last(data, 2);
 
 					from_nrf = false;
 				} break;
@@ -323,7 +323,7 @@ static THD_FUNCTION(rx_thread, arg) {
 			unsigned char data[2];
 			data[0] = COMM_NRF_START_PAIRING;
 			data[1] = NRF_PAIR_FAIL;
-			commands_send_packet_global(data, 2);
+			commands_send_packet_last(data, 2);
 		}
 
 		chThdSleepMilliseconds(5);
