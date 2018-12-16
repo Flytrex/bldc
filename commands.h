@@ -30,6 +30,7 @@ void commands_init(void);
 void commands_set_send_func(void(*func)(unsigned char *data, unsigned int len));
 void commands_send_packet(unsigned char *data, unsigned int len, SendFunc_t send_func_p);
 void commands_send_packet_global(unsigned char *data, unsigned int len);
+void commands_send_packet_last(unsigned char *data, unsigned int len);
 void commands_process_packet(unsigned char *data, unsigned int len, SendFunc_t send_func_p);
 void commands_printf(const char* format, ...);
 void commands_send_rotor_pos(float rotor_pos);
@@ -37,6 +38,6 @@ void commands_send_experiment_samples(float *samples, int len);
 disp_pos_mode commands_get_disp_pos_mode(void);
 void commands_set_app_data_handler(void(*func)(unsigned char *data, unsigned int len));
 void commands_send_app_data(unsigned char *data, unsigned int len);
-void commands_send_appconf(COMM_PACKET_ID packet_id, app_configuration *appconf);
+void commands_send_appconf(COMM_PACKET_ID packet_id, app_configuration *appconf, SendFunc_t send_func_p);
 
 #endif /* COMMANDS_H_ */
