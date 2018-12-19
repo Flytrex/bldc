@@ -41,6 +41,7 @@ static uint8_t serial_rx_buffer[SERIAL_RX_BUFFER_SIZE];
 static int serial_rx_read_pos = 0;
 static int serial_rx_write_pos = 0;
 static volatile bool is_running = false;
+static mutex_t send_mutex;
 
 // Private functions
 static void process_packet(unsigned char *data, unsigned int len);
@@ -116,7 +117,9 @@ static void process_packet(unsigned char *data, unsigned int len) {
 }
 
 static void send_packet_wrapper(unsigned char *data, unsigned int len) {
+	chMtxLock(&send_mutex);
 	packet_send_packet(data, len, PACKET_HANDLER);
+	chMtxUnlock(&send_mutex);
 }
 
 static void send_packet(unsigned char *data, unsigned int len) {
@@ -139,6 +142,7 @@ void app_uartcomm_start(void) {
 	serial_rx_write_pos = 0;
 
 	if (!is_running) {
+		chMtxObjectInit(&send_mutex);
 		chThdCreateStatic(packet_process_thread_wa, sizeof(packet_process_thread_wa),
 				NORMALPRIO, packet_process_thread, NULL);
 		is_running = true;
