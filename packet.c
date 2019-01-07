@@ -58,10 +58,11 @@ void packet_send_packet(unsigned char *data, unsigned int len, int handler_num) 
 		handler_states[handler_num].tx_buffer[b_ind++] = len & 0xFF;
 	}
 
+    unsigned char *data_tgt = handler_states[handler_num].tx_buffer + b_ind;
 	memcpy(handler_states[handler_num].tx_buffer + b_ind, data, len);
 	b_ind += len;
 
-	unsigned short crc = crc16(data, len);
+	unsigned short crc = crc16(data_tgt, len);
 	handler_states[handler_num].tx_buffer[b_ind++] = (uint8_t)(crc >> 8);
 	handler_states[handler_num].tx_buffer[b_ind++] = (uint8_t)(crc & 0xFF);
 	handler_states[handler_num].tx_buffer[b_ind++] = 3;
