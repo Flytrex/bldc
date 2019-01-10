@@ -23,6 +23,9 @@
 #include "hw.h"
 #include "packet.h"
 #include "commands.h"
+#include "mc_interface.h"
+#include "datatypes.h"
+#include "crc.h"
 
 #include <string.h>
 
@@ -122,6 +125,37 @@ static void send_packet_wrapper(unsigned char *data, unsigned int len) {
 	chMtxUnlock(&send_mutex);
 }
 
+
+static bool validate_packet(uint8_t* buffer, unsigned int len){
+	int ind = 0;
+	
+	int payload_size_indicator = buffer[ind++];
+	int payload_size;
+	if (payload_size_indicator == 2){
+		payload_size = buffer[ind++];
+	}
+	else if (payload_size_indicator == 3){
+		payload_size = buffer[ind++] << 8;
+		payload_size |= buffer[ind++];
+	}
+	else
+		return false;
+	
+	unsigned short real_crc = crc16(buffer + ind, payload_size);
+	ind += payload_size;
+	
+	unsigned short buf_crc = buffer[ind++] << 8;
+	buf_crc |= buffer[ind++];
+	if (buf_crc != real_crc)
+		return false;
+	
+	uint8_t stop_byte = buffer[ind++];
+	if (stop_byte != 3)
+		return false;
+	
+	return true;
+}
+
 static void send_packet(unsigned char *data, unsigned int len) {
 	// Wait for the previous transmission to finish.
 	while (HW_UART_DEV.txstate == UART_TX_ACTIVE) {
@@ -132,6 +166,11 @@ static void send_packet(unsigned char *data, unsigned int len) {
 	// after this function returns.
 	static uint8_t buffer[PACKET_MAX_PL_LEN + 5];
 	memcpy(buffer, data, len);
+	
+	if (!validate_packet(buffer, len)){
+		mc_interface_fault_stop(FAULT_CODE_CRC_MISMATCH);
+		return;
+	}
 
 	uartStartSend(&HW_UART_DEV, len, buffer);
 }

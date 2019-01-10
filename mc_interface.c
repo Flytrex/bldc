@@ -301,6 +301,7 @@ const char* mc_interface_fault_to_string(mc_fault_code fault) {
 	case FAULT_CODE_ABS_OVER_CURRENT: return "FAULT_CODE_ABS_OVER_CURRENT"; break;
 	case FAULT_CODE_OVER_TEMP_FET: return "FAULT_CODE_OVER_TEMP_FET"; break;
 	case FAULT_CODE_OVER_TEMP_MOTOR: return "FAULT_CODE_OVER_TEMP_MOTOR"; break;
+	case FAULT_CODE_CRC_MISMATCH: return "FAULT_CODE_CRC_MISMATCH"; break;
 	default: return "FAULT_UNKNOWN"; break;
 	}
 }
