@@ -72,6 +72,7 @@ static encoder_mode mode = ENCODER_MODE_NONE;
 static float last_enc_angle = 0.0;
 uint16_t spi_val = 0;
 uint32_t spi_error_cnt = 0;
+float spi_error_rate = 0.0;
 
 // Private functions
 static void spi_transfer(uint16_t *in_buf, const uint16_t *out_buf, int length);
@@ -87,6 +88,11 @@ uint32_t encoder_spi_get_error_cnt(void) {
 uint16_t encoder_spi_get_val(void) {
     return spi_val;
 }
+
+float encoder_spi_get_error_rate(void) {
+    return spi_error_rate;
+}
+
 
 void encoder_deinit(void) {
 	nvicDisableVector(HW_ENC_EXTI_CH);
@@ -267,12 +273,16 @@ void encoder_tim_isr(void) {
 	spi_end();
 
     spi_val = pos;
-    if(spi_check_parity(pos)) {
+    if(spi_check_parity(pos) && pos!=0xffff) {  // all ones = no link
         pos &= 0x3FFF;
         last_enc_angle = ((float)pos * 360.0) / 16384.0;
+        UTILS_LP_FAST(spi_error_rate, 0.0, 1./AS5047_SAMPLE_RATE_HZ);
     } else {
         ++spi_error_cnt;
+        UTILS_LP_FAST(spi_error_rate, 1.0, 1./AS5047_SAMPLE_RATE_HZ);
     }
+
+    // UTILS_LP_FAST(value, sample, filter_constant)
 
 }
 
