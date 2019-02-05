@@ -105,27 +105,38 @@ static THD_FUNCTION(gen_thread, arg) {
 	PID pid;
 	for(;;) {
 		if (is_active) {
+            float mode = 0;
             float current = 0;
 			const float rpm_now_dir = mc_interface_get_rpm();
 			const float rpm_now = fabsf(rpm_now_dir);
 			const float rpm_error = rpm_now - target_rpm;
 
 			if (rpm_now < RPM_THRESHOLD){
-				mc_interface_set_duty(0);
 				pid = pid_init(1.0/GEN_UPDATE_RATE_HZ, MAX_CURRENT, 0, Kp, Kd, Ki);
+				mc_interface_set_duty(0);
+				mode = 1;
 			}
 			else
+            {
 				current = (float)pid_calc(&pid, rpm_error ); // positive error - too fast, more braking needed
+                current *= -SIGN(rpm_now_dir);
 
-			//mc_interface_set_brake_current(current);
-			current *= -SIGN(rpm_now_dir);
-			mc_interface_set_current(current);
+				if(fabsf(current) < 0.5) {
+                    mode = 2;
+                    mc_interface_set_brake_current(0.4);
+                    //mc_interface_set_current(current);
+                }
+                else {
+                    mode = 3;
+                    mc_interface_set_current(current);
+                }
+            }
 
 			// for reporting
 			brake_rpm_error = rpm_error/1000;
 			brake_current_val = current;
 			current_integral_val = pid.integral;
-		}
+		} // is_active
 
 		// Sleep for a time according to the specified rate
 		systime_t sleep_time = SLEEP_TIME;
