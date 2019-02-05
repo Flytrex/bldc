@@ -111,6 +111,7 @@ static THD_FUNCTION(gen_thread, arg) {
 			const float rpm_error = rpm_now - target_rpm;
 
 			if (rpm_now < RPM_THRESHOLD){
+				mc_interface_set_duty(0);
 				pid = pid_init(1.0/GEN_UPDATE_RATE_HZ, MAX_CURRENT, 0, Kp, Kd, Ki);
 			}
 			else
