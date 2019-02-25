@@ -182,15 +182,17 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
 			sscanf(argv[3], "%f", &Ki);
 			sscanf(argv[4], "%f", &Kd);
 		}
+
+    } else if (argc==1) {
+        commands_printf("Brake Status");
+        commands_printf("   FW version: %s", GIT_VERSION);
+        commands_printf("   App running: %s", is_running ? "On" : "Off");
+        commands_printf("   Active: %s", is_active ? "On" : "Off");
+        commands_printf("   Target RPM: %.1f", (double)target_rpm);
+        commands_printf("   Kp: %.6f", (double)Kp);
+        commands_printf("   Ki: %.6f", (double)Ki);
+        commands_printf("   Kd: %.6f", (double)Kd);
+        commands_printf(" ");
     }
 
-   	commands_printf("Brake Status");
-	commands_printf("   FW version: %s", GIT_VERSION);
-	commands_printf("   App running: %s", is_running ? "On" : "Off");
-	commands_printf("   Active: %s", is_active ? "On" : "Off");
-	commands_printf("   Target RPM: %.1f", (double)target_rpm);
-	commands_printf("   Kp: %.6f", (double)Kp);
-	commands_printf("   Ki: %.6f", (double)Ki);
-	commands_printf("   Kd: %.6f", (double)Kd);
-	commands_printf(" ");
 }
