@@ -42,6 +42,8 @@
 #include "hw_410.h"
 #elif defined HW_VERSION_60
 #include "hw_60.h"
+#elif defined HW_VERSION_60_FTX
+#include "hw_60_ftx.h"
 #elif defined HW_VERSION_R2
 #include "hw_r2.h"
 #elif defined HW_VERSION_VICTOR_R1A
