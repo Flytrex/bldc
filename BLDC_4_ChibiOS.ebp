@@ -24,6 +24,22 @@
 					<Add option="-Wl,--gc-sections" />
 				</Linker>
 			</Target>
+			<Target title="bldc">
+				<Option output="build\BLDC_4_ChibiOS.hex" />
+				<Option object_output="build\obj\" />
+				<Option type="0" />
+				<Option compiler="armgcc_eb" />
+				<Option projectDeviceOptionsRelation="0" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-g2" />
+					<Add option="-fdata-sections" />
+					<Add option="-ffunction-sections" />
+				</Compiler>
+				<Linker>
+					<Add option="-Wl,--gc-sections" />
+				</Linker>
+			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
@@ -836,6 +852,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="hwconf\hw_60.h" />
+		<Unit filename="hwconf\hw_60_ftx.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hwconf\hw_60_ftx.h" />
 		<Unit filename="hwconf\hw_75_300.c">
 			<Option compilerVar="CC" />
 		</Unit>
