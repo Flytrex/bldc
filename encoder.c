@@ -71,6 +71,7 @@ static uint32_t enc_counts = 10000;
 static encoder_mode mode = ENCODER_MODE_NONE;
 static float last_enc_angle = 0.0;
 uint16_t spi_val = 0;
+uint16_t spi_diag_val = 0;
 uint32_t spi_error_cnt = 0;
 float spi_error_rate = 0.0;
 
@@ -87,6 +88,10 @@ uint32_t encoder_spi_get_error_cnt(void) {
 
 uint16_t encoder_spi_get_val(void) {
     return spi_val;
+}
+
+uint16_t encoder_spi_get_diag_val(void) {
+    return spi_diag_val;
 }
 
 float encoder_spi_get_error_rate(void) {
@@ -169,6 +174,10 @@ void encoder_init_as5047p_spi(void) {
 #if AS5047_USE_HW_SPI_PINS
 	palSetPadMode(SPI_SW_MOSI_GPIO, SPI_SW_MOSI_PIN, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 	palSetPad(SPI_SW_MOSI_GPIO, SPI_SW_MOSI_PIN);
+#endif
+#ifdef HW_HALL_ENC_PIN4
+	palSetPadMode(HW_HALL_ENC_GPIO4, HW_HALL_ENC_PIN4, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+	palSetPad(HW_HALL_ENC_GPIO4, HW_HALL_ENC_PIN4);
 #endif
 
 	// Enable timer clock
@@ -266,14 +275,29 @@ bool spi_check_parity(uint16_t x)
  * Timer interrupt
  */
 void encoder_tim_isr(void) {
-	uint16_t pos;
+
+	uint16_t pos=0, diag=0;
+    const uint16_t diag_reg = 0xFFFC, pos_reg = 0xFFFF;
 
 	spi_begin();
-	spi_transfer(&pos, 0, 1);
+	spi_transfer(&diag, &pos_reg, 1);
 	spi_end();
 
+	for (int i = 0;i < 6;i++) // measured 520ns, minimum 350 required
+        spi_delay();
+
+	spi_begin();
+	spi_transfer(&pos, &diag_reg, 1);
+	spi_end();
+
+    spi_diag_val = diag;
     spi_val = pos;
-    if(spi_check_parity(pos) && pos!=0xffff) {  // all ones = no link
+
+    bool diag_error = !spi_check_parity(diag) ||
+                        diag == 0xffff ||       // all ones = no link
+                        (diag & 0x800);        // field too low
+
+    if(spi_check_parity(pos) && !diag_error) {
         pos &= 0x3FFF;
         last_enc_angle = ((float)pos * 360.0) / 16384.0;
         UTILS_LP_FAST(spi_error_rate, 0.0, 1./AS5047_SAMPLE_RATE_HZ);
@@ -317,7 +341,9 @@ static void spi_transfer(uint16_t *in_buf, const uint16_t *out_buf, int length) 
 		uint16_t recieve = 0;
 
 		for (int bit = 0;bit < 16;bit++) {
-			//palWritePad(HW_SPI_PORT_MOSI, HW_SPI_PIN_MOSI, send >> 15);
+            #ifdef HW_HALL_ENC_PIN4
+			palWritePad(HW_HALL_ENC_GPIO4, HW_HALL_ENC_PIN4, send >> 15);
+            #endif
 			send <<= 1;
 
 			spi_delay();
