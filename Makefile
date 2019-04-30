@@ -155,6 +155,7 @@ CSRC = $(STARTUPSRC) \
        timer.c \
        i2c_bb.c \
        virtual_motor.c \
+       pid.c \
        $(HWSRC) \
        $(APPSRC) \
        $(NRFSRC) \
@@ -264,6 +265,9 @@ ULIBDIR =
 # List all user libraries here
 ULIBS = -lm
 
+# pull a revision number from GIT
+GIT_VERSION := $(shell git describe --abbrev=7 --dirty --always --tags)
+
 #
 # End of user defines
 ##############################################################################
@@ -304,3 +308,5 @@ debug-start:
 
 RULESPATH = $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC
 include $(RULESPATH)/rules.mk
+
+CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"

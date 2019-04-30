@@ -141,15 +141,15 @@
 /*
  * Set APP_CUSTOM_TO_USE to the name of the main C file of the custom application.
  */
-//#define APP_CUSTOM_TO_USE			"app_rotary_led.c"
-//#define APPCONF_APP_TO_USE			APP_CUSTOM
+#define APP_CUSTOM_TO_USE			"app_brake.c"
+#define APPCONF_APP_TO_USE			APP_CUSTOM
 //#define MCCONF_FOC_F_SW				5000
 
 /*
  * Enable blackmagic probe output on SWD port
  */
 #ifndef HAS_BLACKMAGIC
-#define HAS_BLACKMAGIC				1
+#define HAS_BLACKMAGIC				0
 #endif
 
 /*
