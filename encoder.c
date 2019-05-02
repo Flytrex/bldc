@@ -23,6 +23,8 @@
 #include "stm32f4xx_conf.h"
 #include "hw.h"
 #include "utils.h"
+#include <string.h>
+#include <stdio.h>
 
 // Defines
 #define AS5047P_READ_ANGLECOM		(0x3FFF | 0x4000 | 0x8000) // This is just ones
@@ -271,6 +273,57 @@ bool spi_check_parity(uint16_t x)
     return (~x) & 1;
 }
 
+
+static char m_fault_print_buffer[100];
+
+char* encoder_diag_to_string(uint16_t diag) {
+
+    const int ENC_5047_MAGL = 1<<11;
+    const int ENC_5047_MAGH = 1<<10;
+    const int ENC_5047_COF = 1<<9;
+    const int ENC_5047_READY = 1<<8;
+    const int ENC_5047_AGC = 0xFF;
+
+    m_fault_print_buffer[0] = 0;
+
+    if(diag == 0xffff){
+        strcat(m_fault_print_buffer, "ERR| Disconnected");
+        return m_fault_print_buffer;
+    }
+
+    if(!spi_check_parity(diag)){
+        strcat(m_fault_print_buffer, "ERR| Parity");
+        return m_fault_print_buffer;
+    }
+
+    if (diag & (ENC_5047_MAGL | ENC_5047_MAGH | ENC_5047_COF)) {
+        strcat(m_fault_print_buffer, "ERR|");
+    }
+
+    if (diag & ENC_5047_MAGL) {
+        strcat(m_fault_print_buffer, " MAG LOW |");
+    }
+    if (diag & ENC_5047_MAGH) {
+        strcat(m_fault_print_buffer, " MAG HIGH |");
+    }
+    if (diag & ENC_5047_COF) {
+        strcat(m_fault_print_buffer, " COF |");
+    }
+    if (!(diag & ENC_5047_READY)) {
+        strcat(m_fault_print_buffer, " INIT |");
+    }
+
+    int len = strlen(m_fault_print_buffer);
+    snprintf(m_fault_print_buffer+len,
+             sizeof(m_fault_print_buffer)-len, " AGC %x |", diag & ENC_5047_AGC);
+
+	return m_fault_print_buffer;
+}
+
+char* encoder_diag_string(void) {
+    return encoder_diag_to_string(spi_diag_val);
+}
+
 /**
  * Timer interrupt
  */
@@ -293,9 +346,9 @@ void encoder_tim_isr(void) {
     spi_diag_val = diag;
     spi_val = pos;
 
-    bool diag_error = !spi_check_parity(diag) ||
-                        diag == 0xffff ||       // all ones = no link
-                        (diag & 0x800);        // field too low
+    bool diag_error = !spi_check_parity(diag)
+                        || diag == 0xffff        // all ones = no link
+                        ;//|| (diag & 0x800);        // field too low
 
     if(spi_check_parity(pos) && !diag_error) {
         pos &= 0x3FFF;

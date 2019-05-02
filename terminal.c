@@ -423,10 +423,12 @@ void terminal_process_string(char *str) {
 	} else if (strcmp(argv[0], "limits") == 0) {
         mc_interface_print_limits();
 	} else if (strcmp(argv[0], "encoder") == 0) {
-        commands_printf("SPI(val:%x, diag:%x) errors:%d, rate:%.5f", (unsigned int)encoder_spi_get_val(),
+        commands_printf("SPI(val:%x, diag:%x) errors:%d, rate:%.5f\n%s", (unsigned int)encoder_spi_get_val(),
                                                                     (unsigned int)encoder_spi_get_diag_val(),
                                                                     encoder_spi_get_error_cnt(),
-                                                                    (double)encoder_spi_get_error_rate());
+                                                                    (double)encoder_spi_get_error_rate(),
+                                                                    encoder_diag_string()
+                                                                    );
 	}
 	// The help command
 	else if (strcmp(argv[0], "help") == 0) {
