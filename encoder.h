@@ -38,5 +38,6 @@ uint16_t encoder_spi_get_diag_val(void);
 uint32_t encoder_spi_get_error_cnt(void);
 float encoder_spi_get_error_rate(void);
 char* encoder_diag_string(void);
+char encoder_diag_get_errors(void);
 
 #endif /* ENCODER_H_ */

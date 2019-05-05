@@ -273,6 +273,22 @@ bool spi_check_parity(uint16_t x)
     return (~x) & 1;
 }
 
+char encoder_diag_get_errors(void) {
+    uint16_t diag = spi_diag_val;
+
+    if(diag == 0xffff){
+        return 0x80;
+    } else if (!spi_check_parity(diag)) {
+        return 0x40;
+    } else {
+        return ((spi_diag_val & 0x0f00) >> 8) ^ 1; // flip READY bit to make all errors active high
+    }
+    // bit 0 NOT READY
+    // bit 1 OVERFLOW
+    // bit 2 MAGH
+    // bit 3 MAGL
+    // See AS5047 datasheet for details
+}
 
 static char m_fault_print_buffer[100];
 

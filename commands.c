@@ -231,6 +231,8 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 		buffer_append_float32(send_buffer, app_brake_current_command(), 1e2, &ind);
 		buffer_append_float32(send_buffer, app_brake_rpm_error(), 1e2, &ind);
 		send_buffer[ind++] = mc_interface_get_fault();
+		send_buffer[ind++] = app_brake_status();
+		send_buffer[ind++] = encoder_diag_get_errors();
 
 		commands_send_packet(send_buffer, ind, send_func_p);
         break;

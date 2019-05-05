@@ -98,6 +98,14 @@ float app_brake_current_integral_val(void){
 	return current_integral_val;
 }
 
+char app_brake_status(void) {
+
+    char s = 0;
+    s |= (is_active)  ? 1   : 0;
+    s |= (is_running) ? 2   : 0;
+    return s;
+}
+
 static THD_FUNCTION(gen_thread, arg) {
 	(void)arg;
 
