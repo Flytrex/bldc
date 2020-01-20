@@ -233,6 +233,8 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 		send_buffer[ind++] = mc_interface_get_fault();
 		send_buffer[ind++] = app_brake_status();
 		send_buffer[ind++] = encoder_diag_get_errors();
+		send_buffer[ind++] = encoder_diag_get_agc();
+		send_buffer[ind++] = encoder_spi_get_error_rate()*255.0;
 
 		commands_send_packet(send_buffer, ind, send_func_p);
         break;

@@ -273,6 +273,11 @@ bool spi_check_parity(uint16_t x)
     return (~x) & 1;
 }
 
+char encoder_diag_get_agc(void) {
+	 return (spi_diag_val & 0xff);
+}
+
+
 char encoder_diag_get_errors(void) {
     uint16_t diag = spi_diag_val;
 
