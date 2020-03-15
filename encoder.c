@@ -374,10 +374,10 @@ void encoder_tim_isr(void) {
     if(spi_check_parity(pos) && !diag_error) {
         pos &= 0x3FFF;
         last_enc_angle = ((float)pos * 360.0) / 16384.0;
-        UTILS_LP_FAST(spi_error_rate, 0.0, 1./AS5047_SAMPLE_RATE_HZ);
+        UTILS_LP_FAST(spi_error_rate, 0.0, 5./AS5047_SAMPLE_RATE_HZ);
     } else {
         ++spi_error_cnt;
-        UTILS_LP_FAST(spi_error_rate, 1.0, 1./AS5047_SAMPLE_RATE_HZ);
+        UTILS_LP_FAST(spi_error_rate, 1.0, 5./AS5047_SAMPLE_RATE_HZ);
     }
 
     // UTILS_LP_FAST(value, sample, filter_constant)
