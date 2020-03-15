@@ -2604,7 +2604,7 @@ static float correct_encoder(float obs_angle, float enc_angle, float speed) {
 		}
 	}
 
-	return using_encoder ? enc_angle : obs_angle;
+	return using_encoder && (encoder_spi_get_error_rate() < 0.01) ? enc_angle : obs_angle;
 }
 
 static float correct_hall(float angle, float speed, float dt) {
