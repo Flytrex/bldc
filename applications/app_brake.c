@@ -47,6 +47,7 @@ static volatile float target_rpm = 1000;
 static volatile float Kp = 0.005;
 static volatile float Ki = 0.015;
 static volatile float Kd = 0;
+static volatile char calc_mode = 0;
 
 // Threads
 static THD_FUNCTION(gen_thread, arg);
@@ -103,6 +104,7 @@ char app_brake_status(void) {
     char s = 0;
     s |= (is_active)  ? 1   : 0;
     s |= (is_running) ? 2   : 0;
+    s |= calc_mode<<4;
     return s;
 }
 
@@ -113,7 +115,7 @@ static THD_FUNCTION(gen_thread, arg) {
 	PID pid;
 	for(;;) {
 		if (is_active) {
-            float mode = 0;
+            calc_mode = 0;
             float current = 0;
 			const float rpm_now_dir = mc_interface_get_rpm();
 			const float rpm_now = fabsf(rpm_now_dir);
@@ -122,7 +124,7 @@ static THD_FUNCTION(gen_thread, arg) {
 			if (rpm_now < RPM_THRESHOLD){
 				pid = pid_init(1.0/GEN_UPDATE_RATE_HZ, MAX_CURRENT, 0, Kp, Kd, Ki);
 				mc_interface_set_duty(0);
-				mode = 1;
+				calc_mode = 1;
 			}
 			else
             {
@@ -130,12 +132,12 @@ static THD_FUNCTION(gen_thread, arg) {
                 current *= -SIGN(rpm_now_dir);
 
 				if(fabsf(current) < 0.5) {
-                    mode = 2;
+                    calc_mode = 2;
                     mc_interface_set_brake_current(0.4);
                     //mc_interface_set_current(current);
                 }
                 else {
-                    mode = 3;
+                    calc_mode = 3;
                     mc_interface_set_current(current);
                 }
             }
