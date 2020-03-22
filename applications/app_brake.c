@@ -131,7 +131,7 @@ static THD_FUNCTION(gen_thread, arg) {
 				current = (float)pid_calc(&pid, rpm_error ); // positive error - too fast, more braking needed
                 current *= -SIGN(rpm_now_dir);
 
-				if(fabsf(current) < 0.5) {
+				if(fabsf(current) < 0.5  && pid.integral>0.) { // "cogging" mode, use only when slowing down
                     calc_mode = 2;
                     mc_interface_set_brake_current(0.4);
                     //mc_interface_set_current(current);
