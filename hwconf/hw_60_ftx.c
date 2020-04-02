@@ -96,8 +96,8 @@ void hw_init_gpio(void) {
 	palSetPadMode(GPIOA, 1, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOA, 2, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOA, 3, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_ANALOG);
+	//palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
+	//palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_ANALOG);
 
 	palSetPadMode(GPIOC, 0, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 1, PAL_MODE_INPUT_ANALOG);
@@ -105,6 +105,12 @@ void hw_init_gpio(void) {
 	palSetPadMode(GPIOC, 3, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 4, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 5, PAL_MODE_INPUT_ANALOG);
+
+     // SPID1 I/O pins setup.(Overwriting board.h configurations)
+    palSetPadMode(GPIOA, HW_SPI_PIN_SCK, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);    /* New SCK */
+    palSetPadMode(GPIOA, HW_SPI_PIN_MISO,PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);    /* New MISO*/
+    palSetPadMode(GPIOA, HW_SPI_PIN_MOSI,PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);    /* New MOSI*/
+    palSetPadMode(GPIOA, HW_SPI_PIN_NSS,  PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST); /* New CS*/
 
 	drv8301_init();
 }
