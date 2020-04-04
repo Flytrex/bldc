@@ -83,6 +83,7 @@ static void spi_begin(void);
 static void spi_end(void);
 static void spi_delay(void);
 
+static bool spi_check_parity(uint16_t x);
 
 
 #define LTC4332_REG_CONFIG  0x00
@@ -103,12 +104,36 @@ static void spi_delay(void);
 //     SS3_POL SS3_PHA SS2_POL SS2_PHA SS1_POL SS1_PHA
 #define LTC4332_SPI_MODE 0x01
 
-static uint16_t txbuf_g[3] = {0};
-static uint16_t rxbuf_g[3] = {0};
+#define AS5047_REG_DIAG     0xFFFC
+#define AS5047_REG_POS      0xFFFF
+
 
 static void init_hw_spi(void);
 static void xfer_hw_spi(void);
-static void hw_spi_cb(SPIDriver *spip);
+
+
+
+static THD_WORKING_AREA(waEncoderThread, 1024);
+static thread_t *tp;
+
+static THD_FUNCTION(EncoderThread, arg) {
+    (void)arg;
+
+    tp = chThdGetSelfX();
+    while(1) {
+            chEvtWaitAny((eventmask_t)1);
+            xfer_hw_spi();
+            /*
+            palWritePad(GPIOC, 4, 0);
+            chThdSleepMicroseconds(50);
+            palWritePad(GPIOC, 4, 1);
+            //chThdSleepMicroseconds(200);
+            spi_diag_val++;
+            */
+
+    }
+}
+
 
 // SPI_CR1_BR_2 | SPI_CR1_BR_1   = 656 kHz
 //
@@ -118,15 +143,15 @@ static void hw_spi_cb(SPIDriver *spip);
  * The slave select line is the pin
   on the port GPIOA.
  */
-static const SPIConfig hs_spicfg = {
-  hw_spi_cb,
+static const SPIConfig remote_spicfg = {
+  NULL,
   /* HW dependent part.*/
-  GPIOA,
-  HW_SPI_PIN_NSS, // =4
-  SPI_CR1_BR_2 | SPI_CR1_BR_1 // | SPI_CR1_CPOL | SPI_CR1_CPHA
+  GPIOC,
+  4, // =4
+  SPI_CR1_DFF | SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0 // | SPI_CR1_CPOL | SPI_CR1_CPHA
 };
 
-static const SPIConfig ncb_spicfg = {
+static const SPIConfig local_spicfg = {
   NULL,
   /* HW dependent part.*/
   GPIOA,
@@ -135,12 +160,6 @@ static const SPIConfig ncb_spicfg = {
 };
 
 
-
-void hw_spi_cb(SPIDriver *spip)
-{
-    spiUnselect(spip);
-    spi_diag_val = rxbuf_g[1];
-}
 
 
 void ltc4332_write(uint8_t reg, uint8_t val)
@@ -175,7 +194,9 @@ uint8_t ltc4332_read(uint8_t reg)
 
 void init_hw_spi(void)
 {
-    spiStart(&HW_SPI_DEV, &ncb_spicfg);
+    spi_val = 1;
+
+    spiStart(&HW_SPI_DEV, &local_spicfg);
 
     ltc4332_write(LTC4332_REG_EVENT, 0x0);      // clear all events and failures
     ltc4332_write(LTC4332_REG_SCRATCH, 0x19);   // test write
@@ -189,21 +210,54 @@ void init_hw_spi(void)
     bool config_ok = (cfg == LTC4332_SPI_MODE) && (w == 16) && (f == 0);
     spi_val = f | (w<<8) | (config_ok << 7);
 
+    chThdCreateStatic(waEncoderThread, sizeof waEncoderThread,
+                      NORMALPRIO, EncoderThread, NULL);
 }
 
 
 void xfer_hw_spi(void)
 {
-    /*
-    txbuf[0] = LTC4332_REG(LTC4332_REG_STATUS, LTC4332_READ);
+    uint16_t txbuf[2] = {0};
+    uint16_t rxbuf[2] = {0};
 
-    spiStart(&HW_SPI_DEV, &hs_spicfg);       // Setup transfer parameters.
-    spiSelect(&HW_SPI_DEV);                  // Slave Select assertion.
-    spiExchange(&HW_SPI_DEV, 2,
-                txbuf, rxbuf);               // Atomic transfer operations.
-    spiUnselect(&HW_SPI_DEV);                // Slave Select de-assertion.
-    */
+    spiStart(&HW_SPI_DEV, &remote_spicfg);
+
+    spiSelect(&HW_SPI_DEV);
+    txbuf[0] = txbuf[1] = AS5047_REG_POS;
+    spiExchange(&HW_SPI_DEV, 2, txbuf, rxbuf);
+    spiUnselect(&HW_SPI_DEV);
+
+    uint16_t diag = rxbuf[1];   // one cycle delay - requesting POS and receiving DIAG from previous request
+
+    spiSelect(&HW_SPI_DEV);
+    txbuf[0] = txbuf[1] = AS5047_REG_DIAG;
+    spiExchange(&HW_SPI_DEV, 2, txbuf, rxbuf);
+    spiUnselect(&HW_SPI_DEV);
+
+    uint16_t pos = rxbuf[1]; //
+
+    //================================================
+    spi_diag_val = diag;
+    spi_val = pos;
+
+    bool diag_error = !spi_check_parity(diag)
+                        || diag == 0xffff        // all ones = no link
+                        ;//|| (diag & 0x800);        // field too low
+
+    if(spi_check_parity(pos) && !diag_error) {
+        pos &= 0x3FFF;
+        last_enc_angle = ((float)pos * 360.0) / 16384.0;
+        UTILS_LP_FAST(spi_error_rate, 0.0, 5./AS5047_SAMPLE_RATE_HZ);
+    } else {
+        ++spi_error_cnt;
+        UTILS_LP_FAST(spi_error_rate, 1.0, 5./AS5047_SAMPLE_RATE_HZ);
+    }
+
+
 }
+
+
+
 
 
 uint32_t encoder_spi_get_error_cnt(void) {
@@ -308,7 +362,7 @@ void encoder_init_as5047p_spi(void) {
 	HW_ENC_TIM_CLK_EN();
 
 	// Time Base configuration
-	TIM_TimeBaseStructure.TIM_Prescaler = 0;
+	TIM_TimeBaseStructure.TIM_Prescaler = 2;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseStructure.TIM_Period = ((168000000 / 2 / AS5047_SAMPLE_RATE_HZ) - 1);
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
@@ -474,17 +528,13 @@ char* encoder_diag_string(void) {
  */
 void encoder_tim_isr(void) {
 
-    return;
-    //spi_val = 0x1234;
-    spi_diag_val = 0xdead;
-
-    txbuf_g[0] = LTC4332_REG(LTC4332_REG_STATUS, LTC4332_READ);
-    spiStart(&HW_SPI_DEV, &hs_spicfg);
-    spiSelect(&HW_SPI_DEV);
-    spiStartExchange(&HW_SPI_DEV, 2, txbuf_g, rxbuf_g);
-    //    spiUnselect(&HW_SPI_DEV);
+    // Wakes up the thread
+    chSysLockFromISR();
+    chEvtSignalI(tp, (eventmask_t)1);
+    chSysUnlockFromISR();
     return;
 
+    //-----------------------------------------------------------------------
 	uint16_t pos=0, diag=0;
     const uint16_t diag_reg = 0xFFFC, pos_reg = 0xFFFF;
 
