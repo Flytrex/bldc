@@ -28,7 +28,7 @@
 
 // Defines
 #define AS5047P_READ_ANGLECOM		(0x3FFF | 0x4000 | 0x8000) // This is just ones
-#define AS5047_SAMPLE_RATE_HZ		2000
+#define AS5047_SAMPLE_RATE_HZ		4000
 
 #if AS5047_USE_HW_SPI_PINS
 #ifdef HW_SPI_DEV
@@ -148,7 +148,7 @@ static const SPIConfig remote_spicfg = {
   /* HW dependent part.*/
   GPIOC,
   4, // =4
-  SPI_CR1_DFF | SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0 // | SPI_CR1_CPOL | SPI_CR1_CPHA
+  SPI_CR1_DFF | SPI_CR1_BR_2 | SPI_CR1_BR_0 // | SPI_CR1_CPOL | SPI_CR1_CPHA
 };
 
 static const SPIConfig local_spicfg = {
@@ -217,6 +217,23 @@ void init_hw_spi(void)
 
 void xfer_hw_spi(void)
 {
+
+    spiStart(&HW_SPI_DEV, &local_spicfg);
+    uint8_t f = ltc4332_read(LTC4332_REG_FAULT);
+
+    if(f)
+    {
+        spi_diag_val = 0xde00 | f;
+        ++spi_error_cnt;
+        UTILS_LP_FAST(spi_error_rate, 1.0, 5./AS5047_SAMPLE_RATE_HZ);
+
+        ltc4332_write(LTC4332_REG_EVENT, 0x0);      // clear all events and failures
+        return;
+    }
+
+    ltc4332_write(LTC4332_REG_WORD, 16);        // word width
+    ltc4332_write(LTC4332_REG_CONFIG, LTC4332_SPI_MODE);    // phase and polarity
+
     uint16_t txbuf[2] = {0};
     uint16_t rxbuf[2] = {0};
 
@@ -362,9 +379,9 @@ void encoder_init_as5047p_spi(void) {
 	HW_ENC_TIM_CLK_EN();
 
 	// Time Base configuration
-	TIM_TimeBaseStructure.TIM_Prescaler = 2;
+	TIM_TimeBaseStructure.TIM_Prescaler = 1;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseStructure.TIM_Period = ((168000000 / 2 / AS5047_SAMPLE_RATE_HZ) - 1);
+	TIM_TimeBaseStructure.TIM_Period = ((168000000 / 4 / AS5047_SAMPLE_RATE_HZ) - 1);
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
 	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
 	TIM_TimeBaseInit(HW_ENC_TIM, &TIM_TimeBaseStructure);
