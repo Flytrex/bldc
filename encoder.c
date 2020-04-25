@@ -146,8 +146,8 @@ static THD_FUNCTION(EncoderThread, arg) {
 static const SPIConfig remote_spicfg = {
   NULL,
   /* HW dependent part.*/
-  GPIOC,
-  4, // =4
+  GPIOB,
+  3, // =4
   SPI_CR1_DFF | SPI_CR1_BR_2 | SPI_CR1_BR_0 // | SPI_CR1_CPOL | SPI_CR1_CPHA
 };
 

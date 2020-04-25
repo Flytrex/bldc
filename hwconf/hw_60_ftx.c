@@ -103,7 +103,7 @@ void hw_init_gpio(void) {
 	palSetPadMode(GPIOC, 1, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 2, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 3, PAL_MODE_INPUT_ANALOG);
-	//palSetPadMode(GPIOC, 4, PAL_MODE_INPUT_ANALOG);
+	palSetPadMode(GPIOC, 4, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 5, PAL_MODE_INPUT_ANALOG);
 
      // SPID1 I/O pins setup.(Overwriting board.h configurations)
@@ -111,7 +111,7 @@ void hw_init_gpio(void) {
     palSetPadMode(GPIOA, HW_SPI_PIN_MISO,PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);    /*  MISO*/
     palSetPadMode(GPIOA, HW_SPI_PIN_MOSI,PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);    /*  MOSI*/
     palSetPadMode(GPIOA, HW_SPI_PIN_NSS,  PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST); /* CS local*/
-    palSetPadMode(GPIOC, 4,  PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST); /* CS remote (motor temp) */
+    palSetPadMode(GPIOB, 3,  PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST); /* CS remote (B3) */
 
 	drv8301_init();
 }
