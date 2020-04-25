@@ -197,6 +197,7 @@ static void terminal_cmd_brake_status(int argc, const char **argv) {
         commands_printf("Brake Status");
         commands_printf("   FW version: %s", GIT_VERSION);
         commands_printf("   HW id: %x %x %x", STM32_UUID[0], STM32_UUID[1], STM32_UUID[2]);
+        commands_printf("   CURRENT_SHUNT_RES: %.1f uOhm", (double)(CURRENT_SHUNT_RES*1e6));
         commands_printf("   App running: %s", is_running ? "On" : "Off");
         commands_printf("   Active: %s", is_active ? "On" : "Off");
         commands_printf("   Target RPM: %.1f", (double)target_rpm);
