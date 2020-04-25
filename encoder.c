@@ -85,6 +85,12 @@ static void spi_delay(void);
 
 static bool spi_check_parity(uint16_t x);
 
+#define LTC4332_LINK_GPIO	GPIOB
+#define LTC4332_LINK_PIN	8
+
+#define LTC4332_SS1_GPIO	GPIOB
+#define LTC4332_SS1_PIN		3
+
 
 #define LTC4332_REG_CONFIG  0x00
 #define LTC4332_REG_STATUS  0x01
@@ -107,6 +113,7 @@ static bool spi_check_parity(uint16_t x);
 #define AS5047_REG_DIAG     0xFFFC
 #define AS5047_REG_POS      0xFFFF
 
+uint16_t ltc4332_err_flags = 0;
 
 static void init_hw_spi(void);
 static void xfer_hw_spi(void);
@@ -146,8 +153,8 @@ static THD_FUNCTION(EncoderThread, arg) {
 static const SPIConfig remote_spicfg = {
   NULL,
   /* HW dependent part.*/
-  GPIOB,
-  3, // =4
+  LTC4332_SS1_GPIO,
+  LTC4332_SS1_PIN, // =4
   SPI_CR1_DFF | SPI_CR1_BR_2 | SPI_CR1_BR_0 // | SPI_CR1_CPOL | SPI_CR1_CPHA
 };
 
@@ -160,6 +167,17 @@ static const SPIConfig local_spicfg = {
 };
 
 
+void hw_spi_config(void) {
+     // SPID1 I/O pins setup.(Overwriting board.h configurations)
+
+    //palSetPadMode(GPIOA, HW_SPI_PIN_SCK, PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);    /*  SCK */
+    //palSetPadMode(GPIOA, HW_SPI_PIN_MISO,PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);    /*  MISO*/
+    //palSetPadMode(GPIOA, HW_SPI_PIN_MOSI,PAL_MODE_ALTERNATE(5) | PAL_STM32_OSPEED_HIGHEST);    /*  MOSI*/
+    //palSetPadMode(GPIOA, HW_SPI_PIN_NSS,  PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST); /* CS local*/
+
+    //palSetPadMode(LTC4332_SS1_GPIO, LTC4332_SS1_PIN,  PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST); /* CS remote (B3) */
+    //palSetPadMode(LTC4332_LINK_GPIO, LTC4332_LINK_PIN,  PAL_MODE_INPUT); /* LINK (B8) */
+}
 
 
 void ltc4332_write(uint8_t reg, uint8_t val)
@@ -217,13 +235,21 @@ void init_hw_spi(void)
 
 void xfer_hw_spi(void)
 {
+    bool link_ok = !palReadPad(LTC4332_LINK_GPIO, LTC4332_LINK_PIN);
+    if(!link_ok) {
+        ltc4332_err_flags = 0x8000;
+        ++spi_error_cnt;
+
+        UTILS_LP_FAST(spi_error_rate, 1.0, 5./AS5047_SAMPLE_RATE_HZ);
+        return;
+    }
 
     spiStart(&HW_SPI_DEV, &local_spicfg);
-    uint8_t f = ltc4332_read(LTC4332_REG_FAULT);
 
+    uint8_t f = ltc4332_read(LTC4332_REG_FAULT);
+    ltc4332_err_flags = f;
     if(f)
     {
-        spi_diag_val = 0xde00 | f;
         ++spi_error_cnt;
         UTILS_LP_FAST(spi_error_rate, 1.0, 5./AS5047_SAMPLE_RATE_HZ);
 
@@ -291,6 +317,11 @@ uint16_t encoder_spi_get_diag_val(void) {
 
 float encoder_spi_get_error_rate(void) {
     return spi_error_rate;
+}
+
+
+uint16_t encoder_spi_get_ltc_err(void) {
+    return ltc4332_err_flags;
 }
 
 
