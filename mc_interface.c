@@ -148,7 +148,7 @@ void mc_interface_init(mc_configuration *configuration) {
 		break;
 
 	case SENSOR_PORT_MODE_AS5047_SPI:
-		encoder_init_as5047p_spi();
+		encoder_init_as5047p_spi(m_conf.m_encoder_counts);
 		break;
 
 	default:
@@ -186,7 +186,7 @@ void mc_interface_set_configuration(mc_configuration *configuration) {
 			break;
 
 		case SENSOR_PORT_MODE_AS5047_SPI:
-			encoder_init_as5047p_spi();
+			encoder_init_as5047p_spi(configuration->m_encoder_counts);
 			break;
 
 		default:
@@ -194,9 +194,7 @@ void mc_interface_set_configuration(mc_configuration *configuration) {
 		}
 	}
 
-	if (configuration->m_sensor_port_mode == SENSOR_PORT_MODE_ABI) {
-		encoder_set_counts(configuration->m_encoder_counts);
-	}
+	encoder_set_counts(configuration->m_encoder_counts);
 #endif
 
 #ifdef HW_HAS_DRV8301

@@ -113,11 +113,13 @@ static bool spi_check_parity(uint16_t x);
 #define AS5047_REG_DIAG     0xFFFC
 #define AS5047_REG_POS      0xFFFF
 
-uint16_t ltc4332_err_flags = 0;
+#define COUNTS_FLAG_LTC4332 1
+
+uint16_t ltc4332_err_flags = 0xffff;
 
 static void init_hw_spi(void);
 static void xfer_hw_spi(void);
-
+static void xfer_sw_spi(void);
 
 
 static THD_WORKING_AREA(waEncoderThread, 1024);
@@ -129,15 +131,13 @@ static THD_FUNCTION(EncoderThread, arg) {
     tp = chThdGetSelfX();
     while(1) {
             chEvtWaitAny((eventmask_t)1);
-            xfer_hw_spi();
-            /*
-            palWritePad(GPIOC, 4, 0);
-            chThdSleepMicroseconds(50);
-            palWritePad(GPIOC, 4, 1);
-            //chThdSleepMicroseconds(200);
-            spi_diag_val++;
-            */
 
+            if(enc_counts == COUNTS_FLAG_LTC4332) {
+                xfer_hw_spi();
+            } else {
+                ltc4332_err_flags = 0xffff;
+                xfer_sw_spi();
+            }
     }
 }
 
@@ -226,10 +226,7 @@ void init_hw_spi(void)
     uint8_t f = ltc4332_read(LTC4332_REG_FAULT);
 
     bool config_ok = (cfg == LTC4332_SPI_MODE) && (w == 16) && (f == 0);
-    spi_val = f | (w<<8) | (config_ok << 7);
-
-    chThdCreateStatic(waEncoderThread, sizeof waEncoderThread,
-                      NORMALPRIO, EncoderThread, NULL);
+    //ltc4332_err_flags = f | (w<<8) | (config_ok << 7);
 }
 
 
@@ -247,9 +244,9 @@ void xfer_hw_spi(void)
     spiStart(&HW_SPI_DEV, &local_spicfg);
 
     uint8_t f = ltc4332_read(LTC4332_REG_FAULT);
-    ltc4332_err_flags = f;
     if(f)
     {
+        ltc4332_err_flags = f;
         ++spi_error_cnt;
         UTILS_LP_FAST(spi_error_rate, 1.0, 5./AS5047_SAMPLE_RATE_HZ);
 
@@ -259,6 +256,17 @@ void xfer_hw_spi(void)
 
     ltc4332_write(LTC4332_REG_WORD, 16);        // word width
     ltc4332_write(LTC4332_REG_CONFIG, LTC4332_SPI_MODE);    // phase and polarity
+    uint8_t cfg = ltc4332_read(LTC4332_REG_WORD);
+    if(cfg != 16)
+    {
+        ltc4332_err_flags = 0x4000;
+        ++spi_error_cnt;
+
+        UTILS_LP_FAST(spi_error_rate, 1.0, 5./AS5047_SAMPLE_RATE_HZ);
+        return;
+    }
+
+    ltc4332_err_flags = 0;
 
     uint16_t txbuf[2] = {0};
     uint16_t rxbuf[2] = {0};
@@ -389,7 +397,9 @@ void encoder_init_abi(uint32_t counts) {
 	mode = ENCODER_MODE_ABI;
 }
 
-void encoder_init_as5047p_spi(void) {
+void encoder_init_as5047p_spi(uint32_t counts) {
+    enc_counts = counts; // to be used as flags
+
 	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 
 	palSetPadMode(SPI_SW_MISO_GPIO, SPI_SW_MISO_PIN, PAL_MODE_INPUT);
@@ -428,8 +438,50 @@ void encoder_init_as5047p_spi(void) {
 	mode = ENCODER_MODE_AS5047P_SPI;
 	index_found = true;
 
-	init_hw_spi();
+    if(enc_counts == COUNTS_FLAG_LTC4332) {
+        init_hw_spi();
+    }
+
+    chThdCreateStatic(waEncoderThread, sizeof waEncoderThread,
+                  NORMALPRIO, EncoderThread, NULL);
 }
+
+
+void xfer_sw_spi(void) {
+
+	uint16_t pos=0, diag=0;
+    const uint16_t diag_reg = 0xFFFC, pos_reg = 0xFFFF;
+
+	spi_begin();
+	spi_transfer(&diag, &pos_reg, 1);
+	spi_end();
+
+	for (int i = 0;i < 6;i++) // measured 520ns, minimum 350 required
+        spi_delay();
+
+	spi_begin();
+	spi_transfer(&pos, &diag_reg, 1);
+	spi_end();
+
+    spi_diag_val = diag;
+    spi_val = pos;
+
+    bool diag_error = !spi_check_parity(diag)
+                        || diag == 0xffff        // all ones = no link
+                        ;//|| (diag & 0x800);        // field too low
+
+    if(spi_check_parity(pos) && !diag_error) {
+        pos &= 0x3FFF;
+        last_enc_angle = ((float)pos * 360.0) / 16384.0;
+        UTILS_LP_FAST(spi_error_rate, 0.0, 5./AS5047_SAMPLE_RATE_HZ);
+    } else {
+        ++spi_error_cnt;
+        UTILS_LP_FAST(spi_error_rate, 1.0, 5./AS5047_SAMPLE_RATE_HZ);
+    }
+
+    // UTILS_LP_FAST(value, sample, filter_constant)
+}
+
 
 bool encoder_is_configured(void) {
 	return mode != ENCODER_MODE_NONE;
@@ -571,6 +623,7 @@ char* encoder_diag_string(void) {
     return encoder_diag_to_string(spi_diag_val);
 }
 
+
 /**
  * Timer interrupt
  */
@@ -583,37 +636,6 @@ void encoder_tim_isr(void) {
     return;
 
     //-----------------------------------------------------------------------
-	uint16_t pos=0, diag=0;
-    const uint16_t diag_reg = 0xFFFC, pos_reg = 0xFFFF;
-
-	spi_begin();
-	spi_transfer(&diag, &pos_reg, 1);
-	spi_end();
-
-	for (int i = 0;i < 6;i++) // measured 520ns, minimum 350 required
-        spi_delay();
-
-	spi_begin();
-	spi_transfer(&pos, &diag_reg, 1);
-	spi_end();
-
-    spi_diag_val = diag;
-    spi_val = pos;
-
-    bool diag_error = !spi_check_parity(diag)
-                        || diag == 0xffff        // all ones = no link
-                        ;//|| (diag & 0x800);        // field too low
-
-    if(spi_check_parity(pos) && !diag_error) {
-        pos &= 0x3FFF;
-        last_enc_angle = ((float)pos * 360.0) / 16384.0;
-        UTILS_LP_FAST(spi_error_rate, 0.0, 5./AS5047_SAMPLE_RATE_HZ);
-    } else {
-        ++spi_error_cnt;
-        UTILS_LP_FAST(spi_error_rate, 1.0, 5./AS5047_SAMPLE_RATE_HZ);
-    }
-
-    // UTILS_LP_FAST(value, sample, filter_constant)
 
 }
 
@@ -624,10 +646,16 @@ void encoder_tim_isr(void) {
  * The number of encoder counts
  */
 void encoder_set_counts(uint32_t counts) {
+
+    //ENCODER_MODE_ABI,
+	//ENCODER_MODE_AS5047P_SPI
 	if (counts != enc_counts) {
 		enc_counts = counts;
-		TIM_SetAutoreload(HW_ENC_TIM, enc_counts - 1);
-		index_found = false;
+
+		if(mode == ENCODER_MODE_ABI) {
+            TIM_SetAutoreload(HW_ENC_TIM, enc_counts - 1);
+            index_found = false;
+		}
 	}
 }
 
