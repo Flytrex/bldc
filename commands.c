@@ -169,6 +169,19 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
 
+    case COMM_FW_VERSION2:
+		ind = 0;
+		memcpy(send_buffer + ind, STM32_UUID_8, 12);
+		ind += 12;
+
+        uint8_t ver_len = strlen(GIT_VERSION);
+        send_buffer[ind++] = ver_len;
+		memcpy(send_buffer + ind, GIT_VERSION, ver_len);
+		ind += ver_len;
+
+		commands_send_packet(send_buffer, ind, send_func_p);
+		break;
+
 	case COMM_JUMP_TO_BOOTLOADER:
 		flash_helper_jump_to_bootloader();
 		break;
