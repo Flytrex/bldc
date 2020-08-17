@@ -158,19 +158,19 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 		send_buffer[ind++] = FW_VERSION_MAJOR;
 		send_buffer[ind++] = FW_VERSION_MINOR;
 
-#ifdef HW_NAME
-		strcpy((char*)(send_buffer + ind), HW_NAME);
-		ind += strlen(HW_NAME) + 1;
+		strcpy((char*)(send_buffer + ind), GIT_VERSION);
+		ind += strlen(GIT_VERSION) + 1;
 
 		memcpy(send_buffer + ind, STM32_UUID_8, 12);
 		ind += 12;
-#endif
 
 		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
-
+/*
     case COMM_FW_VERSION2:
 		ind = 0;
+		send_buffer[ind++] = COMM_FW_VERSION2;
+
 		memcpy(send_buffer + ind, STM32_UUID_8, 12);
 		ind += 12;
 
@@ -181,7 +181,7 @@ void commands_process_packet_internal(unsigned char *data, unsigned int len, Sen
 
 		commands_send_packet(send_buffer, ind, send_func_p);
 		break;
-
+*/
 	case COMM_JUMP_TO_BOOTLOADER:
 		flash_helper_jump_to_bootloader();
 		break;
