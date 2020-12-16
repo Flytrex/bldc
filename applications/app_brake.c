@@ -113,6 +113,8 @@ static THD_FUNCTION(gen_thread, arg) {
 
 	is_running = true;
 	PID pid;
+    bool was_active = false;
+
 	for(;;) {
 		if (is_active) {
             calc_mode = 0;
@@ -146,7 +148,17 @@ static THD_FUNCTION(gen_thread, arg) {
 			brake_rpm_error = rpm_error/1000;
 			brake_current_val = current;
 			current_integral_val = pid.integral;
+
+            was_active = true;
 		} // is_active
+		else
+        {
+            if(was_active)
+            {
+                was_active = false;
+                mc_interface_set_current(0);
+            }
+        }
 
 		// Sleep for a time according to the specified rate
 		systime_t sleep_time = SLEEP_TIME;
